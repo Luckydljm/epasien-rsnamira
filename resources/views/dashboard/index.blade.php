@@ -341,13 +341,26 @@
     <div class="content d-flex align-items-center justify-content-between flex-wrap gap-3">
         <div>
             <div class="greeting-time" id="greetingTime">Selamat Pagi</div>
-            <h4>{{ session('auth_user.nama', 'Pengguna') }}</h4>
-            <p>Selamat datang di Sistem Informasi Pasien RS Namira Palembang.</p>
+            @if($isDokter)
+                @php
+                    $namaDokter = trim($dokterInfo->nm_dokter);
+                    if (!Str::startsWith(strtolower($namaDokter), 'dr.') && !Str::startsWith(strtolower($namaDokter), 'dr ')) {
+                        $namaDokter = 'dr. ' . $namaDokter;
+                    }
+                @endphp
+                <h4>{{ $namaDokter }}</h4>
+                <p>
+                    {{ $dokterInfo->spesialis ? $dokterInfo->spesialis : 'Dokter' }} · Selamat datang di Sistem Informasi Pasien RS Namira
+                </p>
+            @else
+                <h4>{{ session('auth_user.nama', 'Admin') }}</h4>
+                <p>Selamat datang di Sistem Informasi Pasien RS Namira — Full Akses Admin.</p>
+            @endif
         </div>
         <div class="text-end">
             <div class="live-badge mb-2">
                 <span class="live-dot"></span>
-                LIVE SYSTEM
+                @if($isDokter) DOKTER MODE @else ADMIN FULL ACCESS @endif
             </div>
             <div style="font-size:.8rem;color:rgba(255,255,255,.6);margin-top:.4rem;" id="liveClock"></div>
             <div style="font-size:.75rem;color:rgba(255,255,255,.45);">{{ now()->locale('id')->isoFormat('dddd, D MMMM YYYY') }}</div>
@@ -355,9 +368,17 @@
     </div>
 </div>
 
-{{-- ===========================
-     STAT CARDS
-=========================== --}}
+@if($isDokter)
+<div class="row mb-3">
+    <div class="col-12">
+        <h5 class="fw-bold m-0" style="font-size: 1.05rem; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem;">
+            <i class="bi bi-journal-medical" style="color: var(--primary);"></i>
+            Data Kunjungan Saya
+        </h5>
+    </div>
+</div>
+@endif
+
 <div class="row g-3 mb-4">
     <div class="col-12 col-sm-6 col-xl-2">
         <div class="stat-card">
@@ -385,7 +406,7 @@
             <div class="stat-info">
                 <div class="stat-label">Rawat Inap</div>
                 <div class="stat-value">{{ $stats['rawat_inap'] }}</div>
-                <span class="stat-badge neutral"><i class="bi bi-bed"></i> Ranap</span>
+                <span class="stat-badge neutral"><i class="bi bi-bed"></i> {{ $isDokter ? 'Registrasi' : 'Ranap' }}</span>
             </div>
         </div>
     </div>
@@ -401,19 +422,28 @@
     </div>
     <div class="col-12 col-sm-6 col-xl-2">
         <div class="stat-card">
+            @if($isDokter)
+            <div class="stat-icon green"><i class="bi bi-check-circle-fill"></i></div>
+            <div class="stat-info">
+                <div class="stat-label">Terlayani Hari Ini</div>
+                <div class="stat-value">{{ $stats['total_dokter'] }}</div>
+                <span class="stat-badge up"><i class="bi bi-check2-all"></i> Selesai</span>
+            </div>
+            @else
             <div class="stat-icon amber"><i class="bi bi-person-badge-fill"></i></div>
             <div class="stat-info">
                 <div class="stat-label">Dokter Aktif</div>
                 <div class="stat-value">{{ $stats['total_dokter'] }}</div>
                 <span class="stat-badge up"><i class="bi bi-check-circle"></i> Aktif</span>
             </div>
+            @endif
         </div>
     </div>
     <div class="col-12 col-sm-6 col-xl-2">
         <div class="stat-card">
             <div class="stat-icon teal"><i class="bi bi-door-open-fill"></i></div>
             <div class="stat-info">
-                <div class="stat-label">Kamar Terisi</div>
+                <div class="stat-label">{{ $isDokter ? 'Kamar Pasien' : 'Kamar Terisi' }}</div>
                 <div class="stat-value">{{ $stats['kamar_terpakai'] }}</div>
                 <span class="stat-badge neutral"><i class="bi bi-house"></i> Bed</span>
             </div>
@@ -432,10 +462,10 @@
             <div class="section-header">
                 <h6 class="section-title">
                     <i class="bi bi-bar-chart-line-fill"></i>
-                    Grafik Kunjungan 7 Hari Terakhir
+                    {{ $isDokter ? 'Kunjungan Pasien — 7 Hari Terakhir' : 'Grafik Kunjungan 7 Hari Terakhir' }}
                 </h6>
                 <span style="font-size:.75rem;color:var(--text-muted);">
-                    Data real-time dari SIMRS
+                    {{ $isDokter ? 'Data kunjungan 7 hari terakhir' : 'Data real-time dari SIMRS' }}
                 </span>
             </div>
             <div style="position:relative;height:240px;">
@@ -484,7 +514,7 @@
                 <h6 class="section-title mb-0">
                     <i class="bi bi-clock-history"></i>
                     @if($isDokter)
-                        Pasien Saya Hari Ini
+                        Pasien Hari Ini
                     @else
                         Registrasi Pasien Terbaru Hari Ini
                     @endif
@@ -519,6 +549,7 @@
                             <th>Dokter</th>
                             @endif
                             <th>Jenis</th>
+                            <th>Status</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -547,9 +578,7 @@
                             </td>
                             <td style="font-size:.82rem;">{{ $p->nm_poli ?? '-' }}</td>
                             @if(!$isDokter)
-                            <td style="font-size:.8rem;">
-                                {{ $p->nm_dokter ?? '-' }}
-                            </td>
+                            <td style="font-size:.8rem;">{{ $p->nm_dokter ?? '-' }}</td>
                             @endif
                             <td>
                                 @if($p->status_lanjut === 'Ranap')
@@ -558,6 +587,27 @@
                                     <span class="badge-igd">IGD</span>
                                 @else
                                     <span class="badge-ralan">Ralan</span>
+                                @endif
+                            </td>
+                            <td>
+                                @if(($p->status_layanan ?? 'belum') === 'terlayani')
+                                    <span style="display:inline-flex;align-items:center;gap:.3rem;
+                                                background:rgba(13,112,68,.1);color:#0d7044;
+                                                border:1px solid rgba(13,112,68,.18);
+                                                border-radius:20px;padding:.18rem .6rem;
+                                                font-size:.68rem;font-weight:700;">
+                                        <span style="width:6px;height:6px;background:#0d7044;border-radius:50%;display:inline-block;"></span>
+                                        Terlayani
+                                    </span>
+                                @else
+                                    <span style="display:inline-flex;align-items:center;gap:.3rem;
+                                                background:rgba(255,193,7,.1);color:#b88a00;
+                                                border:1px solid rgba(255,193,7,.25);
+                                                border-radius:20px;padding:.18rem .6rem;
+                                                font-size:.68rem;font-weight:700;">
+                                        <span style="width:6px;height:6px;background:#d4a017;border-radius:50%;display:inline-block;"></span>
+                                        Menunggu
+                                    </span>
                                 @endif
                             </td>
                         </tr>
@@ -681,7 +731,6 @@
                 <div>
                     <div style="font-size:.82rem;font-weight:600;color:var(--text-main);">Sistem Berjalan Normal</div>
                     <div style="font-size:.72rem;color:var(--text-muted);">
-                        Database: <strong>{{ env('DB_DATABASE', 'sik_namira') }}</strong> ·
                         Pengguna: <strong>{{ session('auth_user.nama') }}</strong> ·
                         IP: {{ session('auth_user.ip') }}
                     </div>

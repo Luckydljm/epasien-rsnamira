@@ -246,6 +246,40 @@
             font-weight: 600;
         }
 
+        /* === Sidebar Count Bubble === */
+        .sidebar-count {
+            margin-left: auto;
+            min-width: 22px;
+            height: 20px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 20px;
+            font-size: .65rem;
+            font-weight: 700;
+            padding: 0 .5rem;
+            letter-spacing: 0;
+            transition: transform .2s;
+        }
+        .sidebar-count.ralan {
+            background: rgba(77,200,122,.22);
+            color: #6dd998;
+            border: 1px solid rgba(77,200,122,.25);
+        }
+        .sidebar-count.ranap {
+            background: rgba(96,165,250,.2);
+            color: #93c5fd;
+            border: 1px solid rgba(96,165,250,.25);
+        }
+        .sidebar-count.pulse {
+            animation: count-pulse 2s infinite;
+        }
+        @keyframes count-pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(77,200,122,.4); }
+            50%       { box-shadow: 0 0 0 4px rgba(77,200,122,.0); }
+        }
+        .nav-item-link:hover .sidebar-count { transform: scale(1.1); }
+
         /* Sidebar footer */
         .sidebar-footer {
             padding: .85rem 1.2rem;
@@ -450,7 +484,13 @@
             <div class="user-name">{{ session('auth_user.nama', 'Pengguna') }}</div>
             <div class="user-role">
                 <span class="online-dot me-1"></span>
-                {{ session('auth_user.is_admin') ? 'Admin Utama' : 'Pengguna' }}
+                @if(session('auth_user.is_admin'))
+                    Admin Utama
+                @elseif(session('auth_user.is_dokter'))
+                    dr. {{ session('auth_user.spesialis') ? session('auth_user.spesialis') : 'Dokter' }}
+                @else
+                    Pengguna
+                @endif
             </div>
         </div>
     </div>
@@ -466,21 +506,25 @@
         </a>
 
         <div class="nav-section-label">Layanan</div>
-        <a href="#" class="nav-item-link">
-            <i class="bi bi-person-plus-fill nav-icon"></i>
-            Pendaftaran Pasien
-        </a>
-        <a href="#" class="nav-item-link">
+        <a href="{{ route('rawat-jalan') }}"
+           class="nav-item-link {{ request()->routeIs('rawat-jalan*') ? 'active' : '' }}">
             <i class="bi bi-clipboard2-pulse-fill nav-icon"></i>
-            Rawat Jalan
+            <span>Rawat Jalan</span>
+            @if(($sidebarCounts['rajal'] ?? 0) > 0)
+            <span class="sidebar-count ralan {{ ($sidebarCounts['rajal'] ?? 0) >= 10 ? 'pulse' : '' }}">
+                {{ $sidebarCounts['rajal'] }}
+            </span>
+            @endif
         </a>
-        <a href="#" class="nav-item-link">
+        <a href="{{ route('rawat-inap') }}"
+           class="nav-item-link {{ request()->routeIs('rawat-inap*') ? 'active' : '' }}">
             <i class="bi bi-hospital nav-icon"></i>
-            Rawat Inap
-        </a>
-        <a href="#" class="nav-item-link">
-            <i class="bi bi-lightning-charge-fill nav-icon"></i>
-            IGD
+            <span>Rawat Inap</span>
+            @if(($sidebarCounts['ranap'] ?? 0) > 0)
+            <span class="sidebar-count ranap">
+                {{ $sidebarCounts['ranap'] }}
+            </span>
+            @endif
         </a>
 
         <div class="nav-section-label">Penunjang Medis</div>
@@ -589,7 +633,15 @@
                     </div>
                     <div class="topnav-user-info d-none d-sm-block">
                         <div class="un">{{ session('auth_user.nama', 'Pengguna') }}</div>
-                        <div class="ur">{{ session('auth_user.is_admin') ? 'Admin Utama' : 'Pengguna' }}</div>
+                        <div class="ur">
+                            @if(session('auth_user.is_admin'))
+                                Admin Utama
+                            @elseif(session('auth_user.is_dokter'))
+                                Dokter
+                            @else
+                                Pengguna
+                            @endif
+                        </div>
                     </div>
                     <i class="bi bi-chevron-down ms-1" style="font-size:.7rem;color:var(--text-muted)"></i>
                 </a>

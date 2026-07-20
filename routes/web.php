@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\RajalController;
+use App\Http\Controllers\RanapController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -24,4 +26,9 @@ Route::post('/logout', [LoginController::class, 'logout'])
 Route::middleware('auth.check')->group(function () {
     Route::get('/', fn () => redirect()->route('dashboard'));
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+    // Layanan
+    Route::get('/rawat-jalan', [RajalController::class, 'index'])->name('rawat-jalan');
+    Route::get('/rawat-inap',  [RanapController::class,  'index'])->name('rawat-inap');
 });
+

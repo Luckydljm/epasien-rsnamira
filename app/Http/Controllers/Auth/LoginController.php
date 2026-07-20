@@ -64,12 +64,29 @@ class LoginController extends Controller
         // === CEK 2: User Biasa (tabel user) ===
         $user = UserKhanza::verifyLogin($idUser, $password);
         if ($user) {
+            $kodeUser = $user->kode_user ?? $idUser;
+
+            // === CEK AKSES: Hanya dokter yang boleh login dari tabel user ===
+            $dokterInfo = $this->getDokterByKode($kodeUser);
+            if ($dokterInfo === null) {
+                // Bukan dokter — tolak akses
+                RateLimiter::hit($throttleKey, 60);
+                Log::warning('Login ditolak (bukan dokter)', [
+                    'id_user' => $idUser,
+                    'kode'    => $kodeUser,
+                    'ip'      => $request->ip(),
+                ]);
+                return back()
+                    ->withInput($request->only('id_user'))
+                    ->with('error', 'Akses ditolak. Hanya dokter dan admin yang dapat mengakses sistem ini.');
+            }
+
             RateLimiter::clear($throttleKey);
-            $namaPegawai = UserKhanza::getNamaPegawai($user->kode_user ?? $idUser);
-            $this->createSession($request, $user->kode_user ?? $idUser, $namaPegawai, false, (array) $user);
+            $namaPegawai = $dokterInfo->nm_dokter ?? UserKhanza::getNamaPegawai($kodeUser);
+            $this->createSession($request, $kodeUser, $namaPegawai, false, (array) $user, $dokterInfo);
             $this->logTracker($request, $idUser, $namaPegawai, 'Login');
             return redirect()->route('dashboard')
-                ->with('success', "Selamat datang, {$namaPegawai}!");
+                ->with('success', "Selamat datang, dr. {$namaPegawai}!");
         }
 
         // === LOGIN GAGAL ===
@@ -106,7 +123,7 @@ class LoginController extends Controller
     /**
      * Buat session setelah login berhasil
      */
-    private function createSession(Request $request, string $kode, string $nama, bool $isAdmin, array $aksesData = []): void
+    private function createSession(Request $request, string $kode, string $nama, bool $isAdmin, array $aksesData = [], ?object $dokterInfo = null): void
     {
         $request->session()->regenerate();
 
@@ -114,14 +131,47 @@ class LoginController extends Controller
 
         session([
             'auth_user' => [
-                'kode'     => $kode,
-                'nama'     => $nama,
-                'is_admin' => $isAdmin,
-                'ip'       => $request->ip(),
-                'login_at' => now()->toDateTimeString(),
-                'akses'    => $akses,
+                'kode'       => $kode,
+                'nama'       => $nama,
+                'is_admin'   => $isAdmin,
+                'is_dokter'  => $dokterInfo !== null,
+                'nm_dokter'  => $dokterInfo?->nm_dokter,
+                'spesialis'  => $dokterInfo?->spesialis ?? null,
+                'ip'         => $request->ip(),
+                'login_at'   => now()->toDateTimeString(),
+                'akses'      => $akses,
             ],
         ]);
+    }
+
+    /**
+     * Cek apakah kode user adalah dokter aktif di tabel dokter.
+     * Mengembalikan data dokter (termasuk nama spesialisasi) atau null.
+     *
+     * Kolom yang benar di SIMRS Khanza:
+     *   - dokter.kd_sps  → FK ke tabel spesialis
+     *   - spesialis.nm_sps → nama spesialisasi
+     */
+    private function getDokterByKode(string $kode): ?object
+    {
+        try {
+            // TRIM untuk menghindari whitespace/null byte sisa AES_DECRYPT
+            $kodeBersih = trim($kode);
+            if ($kodeBersih === '') return null;
+
+            return DB::selectOne(
+                "SELECT d.kd_dokter, d.nm_dokter, d.kd_sps,
+                        s.nm_sps AS spesialis
+                 FROM dokter d
+                 LEFT JOIN spesialis s ON s.kd_sps = d.kd_sps
+                 WHERE d.kd_dokter = ? AND d.status = '1'
+                 LIMIT 1",
+                [$kodeBersih]
+            ) ?: null;
+        } catch (\Exception $e) {
+            Log::warning('getDokterByKode error: ' . $e->getMessage(), ['kode' => $kode]);
+            return null;
+        }
     }
 
     /**
