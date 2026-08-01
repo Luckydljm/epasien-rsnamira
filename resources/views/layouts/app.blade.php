@@ -12,8 +12,135 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <!-- DataTables Bootstrap 5 CSS -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css">
 
     <style>
+        /* DataTables Custom Styling */
+        .dataTables_wrapper {
+            padding: 0;
+        }
+        .dataTables_wrapper .dataTables_length,
+        .dataTables_wrapper .dataTables_filter {
+            padding: 0.85rem 1.25rem;
+        }
+        .dataTables_wrapper .dataTables_info,
+        .dataTables_wrapper .dataTables_paginate {
+            padding: 0.85rem 1.25rem;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+        .dataTables_wrapper .dataTables_filter label {
+            font-weight: 600;
+            font-size: 0.82rem;
+            color: var(--text-muted);
+        }
+        .dataTables_wrapper .dataTables_filter input {
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 0.4rem 0.85rem;
+            font-size: 0.83rem;
+            outline: none;
+            margin-left: 0.5rem;
+            transition: all 0.2s;
+            background: #fff;
+        }
+        .dataTables_wrapper .dataTables_filter input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(13,112,68,.12);
+        }
+        .dataTables_wrapper .dataTables_length select {
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 0.35rem 1.8rem 0.35rem 0.65rem;
+            font-size: 0.83rem;
+            outline: none;
+            margin: 0 0.35rem;
+            background-color: #fff;
+        }
+        .dataTables_wrapper .pagination {
+            gap: 3px;
+            margin: 0;
+        }
+        .dataTables_wrapper .page-item .page-link {
+            border-radius: 8px !important;
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            font-size: 0.8rem;
+            font-weight: 500;
+            padding: 0.35rem 0.75rem;
+            transition: all 0.2s;
+        }
+        .dataTables_wrapper .page-item.active .page-link {
+            background-color: var(--primary) !important;
+            border-color: var(--primary) !important;
+            color: #fff !important;
+            box-shadow: 0 2px 6px rgba(13,112,68,.25);
+        }
+        .dataTables_wrapper .page-item.disabled .page-link {
+            opacity: 0.5;
+            background: transparent;
+        }
+        .dataTables_wrapper .page-item:not(.active):not(.disabled) .page-link:hover {
+            background-color: rgba(13,112,68,.08);
+            border-color: var(--primary-light);
+            color: var(--primary);
+        }
+        table.dataTable {
+            width: 100% !important;
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
+            border-collapse: collapse !important;
+        }
+        table.dataTable thead th {
+            background-color: #f8fafc !important;
+            color: #475569 !important;
+            font-size: 0.72rem !important;
+            font-weight: 700 !important;
+            text-transform: uppercase !important;
+            letter-spacing: .6px !important;
+            border-bottom: 2px solid #e2e8f0 !important;
+            padding: 0.85rem 1rem !important;
+            white-space: nowrap !important;
+            vertical-align: middle !important;
+        }
+        table.dataTable tbody td {
+            padding: 0.85rem 1rem !important;
+            vertical-align: middle !important;
+            border-bottom: 1px solid #f1f5f9 !important;
+        }
+        table.dataTable tbody tr:hover {
+            background-color: rgba(13,112,68,.025) !important;
+        }
+        table.dataTable.no-footer {
+            border-bottom: 1px solid var(--border) !important;
+        }
+
+        /* Clean Typography & Badges in Tables */
+        .no-rawat-badge {
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: #334155;
+            background: #f1f5f9;
+            padding: 0.2rem 0.55rem;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+            display: inline-block;
+            white-space: nowrap;
+        }
+        .patient-title-text {
+            font-weight: 600;
+            font-size: 0.865rem;
+            color: #0f172a;
+            line-height: 1.25;
+        }
+        .patient-sub-text {
+            font-size: 0.73rem;
+            color: #64748b;
+            margin-top: 0.15rem;
+        }
         /* =============================================
            GLOBAL LAYOUT — ePasien RS Namira
            Warna identik logo RS Namira (Hijau):
@@ -709,8 +836,41 @@
 
 </div>
 
+<!-- jQuery & DataTables JS -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+<script src="https://cdn.datatables.net/responsive/2.5.0/js/responsive.bootstrap5.min.js"></script>
 <script>
+    // Config Default DataTables Bahasa Indonesia
+    if (window.jQuery && $.fn.dataTable) {
+        $.extend(true, $.fn.dataTable.defaults, {
+            language: {
+                search: "Cari:",
+                searchPlaceholder: "Ketik kata kunci...",
+                lengthMenu: "Tampilkan _MENU_ data",
+                info: "Menampilkan _START_ s/d _END_ dari _TOTAL_ data",
+                infoEmpty: "Menampilkan 0 s/d 0 dari 0 data",
+                infoFiltered: "(difilter dari _MAX_ total data)",
+                zeroRecords: "Tidak ditemukan data yang sesuai",
+                emptyTable: "Tidak ada data yang tersedia pada tabel ini",
+                paginate: {
+                    first: '<i class="bi bi-chevron-double-left"></i>',
+                    last: '<i class="bi bi-chevron-double-right"></i>',
+                    next: '<i class="bi bi-chevron-right"></i>',
+                    previous: '<i class="bi bi-chevron-left"></i>'
+                }
+            },
+            pageLength: 10,
+            lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "Semua"]],
+            responsive: false,
+            autoWidth: false,
+            dom: '<"d-flex align-items-center justify-content-between flex-wrap gap-2 px-3 pt-3 mb-2"lf>rt<"d-flex align-items-center justify-content-between flex-wrap gap-2 px-3 pb-3 mt-2"ip>'
+        });
+    }
+
 (function () {
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebarOverlay');

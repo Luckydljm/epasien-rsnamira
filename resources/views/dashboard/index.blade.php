@@ -538,7 +538,7 @@
 
             @if(count($pasienTerbaru) > 0)
             <div class="table-responsive">
-                <table class="table table-custom table-hover">
+                <table class="table table-custom table-hover" id="tabelPasienTerbaru">
                     <thead>
                         <tr>
                             <th>Pasien</th>
@@ -554,6 +554,10 @@
                     </thead>
                     <tbody>
                         @foreach($pasienTerbaru as $p)
+                        @php
+                            $namaPasien = ucwords(strtolower($p->nm_pasien ?? '-'));
+                            $namaDokter = $p->nm_dokter ? (Str::startsWith(strtolower($p->nm_dokter), 'dr.') ? $p->nm_dokter : 'dr. '.$p->nm_dokter) : '-';
+                        @endphp
                         <tr>
                             <td>
                                 <div class="d-flex align-items-center gap-2">
@@ -561,24 +565,34 @@
                                         {{ strtoupper(substr($p->nm_pasien ?? 'P', 0, 2)) }}
                                     </div>
                                     <div>
-                                        <div style="font-weight:600;font-size:.85rem;">
-                                            {{ $p->nm_pasien ?? '-' }}
+                                        <div class="patient-title-text">
+                                            {{ $namaPasien }}
                                         </div>
-                                        <div style="font-size:.72rem;color:var(--text-muted);">
+                                        <div class="patient-sub-text">
                                             {{ $p->jk === 'L' ? '♂ Laki-laki' : '♀ Perempuan' }}
                                         </div>
                                     </div>
                                 </div>
                             </td>
-                            <td style="font-size:.8rem;font-family:monospace;color:var(--text-muted);">
-                                {{ $p->no_rawat }}
+                            <td>
+                                <span class="no-rawat-badge">
+                                    {{ $p->no_rawat }}
+                                </span>
                             </td>
-                            <td style="font-size:.82rem;">
-                                {{ substr($p->jam_reg ?? '', 0, 5) }}
+                            <td>
+                                <div style="font-size:.83rem;font-weight:600;color:#1e293b;">
+                                    {{ substr($p->jam_reg ?? '', 0, 5) }} WIB
+                                </div>
                             </td>
-                            <td style="font-size:.82rem;">{{ $p->nm_poli ?? '-' }}</td>
+                            <td style="font-size:.83rem;font-weight:600;color:#1e293b;">
+                                {{ ucwords(strtolower($p->nm_poli ?? '-')) }}
+                            </td>
                             @if(!$isDokter)
-                            <td style="font-size:.8rem;">{{ $p->nm_dokter ?? '-' }}</td>
+                            <td>
+                                <div style="font-size:.83rem;font-weight:600;color:#1e293b;">
+                                    {{ $namaDokter }}
+                                </div>
+                            </td>
                             @endif
                             <td>
                                 @if($p->status_lanjut === 'Ranap')
@@ -877,6 +891,15 @@
                     }
                 }
             }
+        });
+    }
+
+    // === Initialize DataTable Pasien Terbaru ===
+    if ($('#tabelPasienTerbaru').length > 0) {
+        $('#tabelPasienTerbaru').DataTable({
+            pageLength: 5,
+            lengthMenu: [[5, 10, 25, 50, -1], [5, 10, 25, 50, "Semua"]],
+            order: [[2, 'desc']]
         });
     }
 })();

@@ -53,13 +53,40 @@
         flex-shrink: 0;
     }
     .mini-stat-icon.blue   { background: rgba(13,112,68,.1);   color: #0d7044; }
-    .mini-stat-icon.purple { background: rgba(139,92,246,.1);  color: #7c3aed; }
-    .mini-stat-icon.teal   { background: rgba(32,201,151,.12); color: #20c997; }
-    .mini-stat-icon.amber  { background: rgba(245,158,11,.1);  color: #b45309; }
-    .mini-stat-icon.cyan   { background: rgba(6,182,212,.1);   color: #0891b2; }
-    .mini-stat-icon.rose   { background: rgba(244,63,94,.1);   color: #be123c; }
+    .mini-stat-icon.green  { background: rgba(32,201,151,.12); color: #20c997; }
+    .mini-stat-icon.purple { background: rgba(139,92,246,.12); color: #7c3aed; }
+    .mini-stat-icon.amber  { background: rgba(245,158,11,.12); color: #b45309; }
+    .mini-stat-icon.indigo { background: rgba(99,102,241,.12); color: #4f46e5; }
+    .mini-stat-icon.teal   { background: rgba(20,184,166,.12); color: #0d9488; }
+    .mini-stat-icon.cyan   { background: rgba(6,182,212,.12);  color: #0891b2; }
+    .mini-stat-icon.rose   { background: rgba(244,63,94,.12);  color: #be123c; }
     .mini-stat-value { font-size: 1.6rem; font-weight: 800; color: var(--text-main); line-height: 1; }
     .mini-stat-label { font-size: .72rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; margin-top: .2rem; }
+
+    /* === Custom Nav Tabs === */
+    .nav-tabs-custom {
+        border-bottom: 1px solid var(--border);
+        gap: .5rem;
+    }
+    .nav-tabs-custom .nav-link {
+        border: 1px solid transparent;
+        border-radius: 12px 12px 0 0;
+        color: var(--text-muted);
+        font-size: .875rem;
+        padding: .65rem 1.25rem;
+        transition: all .2s;
+        background: rgba(0,0,0,.02);
+    }
+    .nav-tabs-custom .nav-link:hover {
+        background: rgba(13,112,68,.06);
+        color: var(--primary);
+    }
+    .nav-tabs-custom .nav-link.active {
+        background: var(--bg-card);
+        border-color: var(--border) var(--border) transparent;
+        color: var(--primary);
+        box-shadow: 0 -2px 6px rgba(0,0,0,.03);
+    }
 
     /* === Table Card === */
     .table-card {
@@ -70,7 +97,7 @@
         overflow: hidden;
     }
     .table-card-header {
-        padding: 1.1rem 1.4rem;
+        padding: 1.1rem 1.4rem 0 1.4rem;
         border-bottom: 1px solid var(--border);
         display: flex;
         align-items: center;
@@ -89,32 +116,19 @@
     }
     .section-title i { color: var(--primary); }
 
-    /* === Table === */
-    .table-custom { margin: 0; font-size: .845rem; }
-    .table-custom th {
-        background: #f8fafc;
-        font-size: .7rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: .6px;
-        color: var(--text-muted);
-        border-bottom: 1px solid var(--border);
-        padding: .75rem 1rem;
-        white-space: nowrap;
+    /* === Table Non-wrapping & Horizontal Scroll === */
+    .table-card .table-responsive {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
     }
+    .table-custom th,
     .table-custom td {
-        padding: .75rem 1rem;
-        vertical-align: middle;
-        border-bottom: 1px solid #f1f5f9;
-        color: var(--text-main);
+        white-space: nowrap !important;
     }
-    .table-custom tr:last-child td { border-bottom: none; }
-    .table-custom tbody tr { transition: background .15s; }
-    .table-custom tbody tr:hover { background: #f8fafc; }
 
     /* === Patient Avatar === */
     .patient-avatar {
-        width: 34px; height: 34px;
+        width: 36px; height: 36px;
         border-radius: 50%;
         background: linear-gradient(135deg, #085c34, #0d7044);
         display: inline-flex;
@@ -122,7 +136,7 @@
         justify-content: center;
         color: #fff;
         font-weight: 700;
-        font-size: .73rem;
+        font-size: .75rem;
         flex-shrink: 0;
     }
 
@@ -139,11 +153,7 @@
         font-weight: 600;
         color: #085c34;
         margin: .15rem .1rem;
-    }
-    .ranap-info-chip.kelas {
-        background: rgba(139,92,246,.07);
-        border-color: rgba(139,92,246,.18);
-        color: #6d28d9;
+        white-space: nowrap !important;
     }
     .ranap-info-chip.lama {
         background: rgba(245,158,11,.07);
@@ -154,29 +164,29 @@
         background: rgba(6,182,212,.07);
         border-color: rgba(6,182,212,.18);
         color: #0369a1;
-        max-width: 200px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+        max-width: none !important;
+        white-space: nowrap !important;
     }
 
     /* === Kelas Badges === */
-    .badge-kelas-vip   { background: rgba(234,179,8,.12);  color: #854d0e; border: 1px solid rgba(234,179,8,.25); border-radius: 20px; padding: .2rem .6rem; font-size: .68rem; font-weight: 700; }
-    .badge-kelas-i     { background: rgba(139,92,246,.1);  color: #6d28d9; border: 1px solid rgba(139,92,246,.2); border-radius: 20px; padding: .2rem .6rem; font-size: .68rem; font-weight: 700; }
-    .badge-kelas-ii    { background: rgba(59,130,246,.1);  color: #1d4ed8; border: 1px solid rgba(59,130,246,.2); border-radius: 20px; padding: .2rem .6rem; font-size: .68rem; font-weight: 700; }
-    .badge-kelas-iii   { background: rgba(13,112,68,.1);   color: #0d7044; border: 1px solid rgba(13,112,68,.2);  border-radius: 20px; padding: .2rem .6rem; font-size: .68rem; font-weight: 700; }
-    .badge-kelas-other { background: rgba(100,116,139,.1); color: #475569; border: 1px solid rgba(100,116,139,.2); border-radius: 20px; padding: .2rem .6rem; font-size: .68rem; font-weight: 700; }
+    .badge-kelas-vvip  { background: rgba(139,92,246,.15); color: #6d28d9; border: 1px solid rgba(139,92,246,.3); border-radius: 20px; padding: .25rem .7rem; font-size: .68rem; font-weight: 800; }
+    .badge-kelas-vip   { background: rgba(234,179,8,.12);  color: #854d0e; border: 1px solid rgba(234,179,8,.25); border-radius: 20px; padding: .25rem .7rem; font-size: .68rem; font-weight: 700; }
+    .badge-kelas-i     { background: rgba(99,102,241,.1);  color: #4f46e5; border: 1px solid rgba(99,102,241,.2); border-radius: 20px; padding: .25rem .7rem; font-size: .68rem; font-weight: 700; }
+    .badge-kelas-ii    { background: rgba(20,184,166,.1);  color: #0d9488; border: 1px solid rgba(20,184,166,.2); border-radius: 20px; padding: .25rem .7rem; font-size: .68rem; font-weight: 700; }
+    .badge-kelas-iii   { background: rgba(13,112,68,.1);   color: #0d7044; border: 1px solid rgba(13,112,68,.2);  border-radius: 20px; padding: .25rem .7rem; font-size: .68rem; font-weight: 700; }
+    .badge-kelas-other { background: rgba(100,116,139,.1); color: #475569; border: 1px solid rgba(100,116,139,.2); border-radius: 20px; padding: .25rem .7rem; font-size: .68rem; font-weight: 700; }
 
     /* === Status dirawat badge === */
     .badge-dirawat {
-        display: inline-flex; align-items: center; gap: .3rem;
+        display: inline-flex; align-items: center; gap: .35rem;
         background: rgba(13,112,68,.1);
         color: #0d7044;
         border-radius: 20px;
-        padding: .22rem .7rem;
-        font-size: .7rem;
+        padding: .25rem .75rem;
+        font-size: .72rem;
         font-weight: 700;
         border: 1px solid rgba(13,112,68,.18);
+        white-space: nowrap !important;
     }
     .dot-pulse {
         width: 7px; height: 7px;
@@ -206,6 +216,8 @@
     .mini-stat:nth-child(4) { animation-delay: .20s; }
     .mini-stat:nth-child(5) { animation-delay: .25s; }
     .mini-stat:nth-child(6) { animation-delay: .30s; }
+    .mini-stat:nth-child(7) { animation-delay: .35s; }
+    .mini-stat:nth-child(8) { animation-delay: .40s; }
 </style>
 @endpush
 
@@ -225,7 +237,7 @@
                 @endif
             </h4>
             <p>
-                Pasien yang sedang menjalani rawat inap
+                Monitoring dan kelola pasien rawat inap
                 @if($isDokter)
                     · <span style="font-weight:600;">dr. {{ $nmDokter }}</span>
                 @endif
@@ -240,19 +252,37 @@
 </div>
 
 {{-- ===========================
-     MINI STAT CARDS
+     MINI STAT CARDS (8 CARDS LENGKAP)
 =========================== --}}
 <div class="row g-3 mb-4">
-    <div class="col-6 col-md-2">
+    <div class="col-6 col-md-3">
         <div class="mini-stat">
             <div class="mini-stat-icon blue"><i class="bi bi-hospital-fill"></i></div>
             <div>
                 <div class="mini-stat-value">{{ $statsRanap['total_ranap'] }}</div>
-                <div class="mini-stat-label">Total Ranap</div>
+                <div class="mini-stat-label">Sedang Dirawat</div>
             </div>
         </div>
     </div>
-    <div class="col-6 col-md-2">
+    <div class="col-6 col-md-3">
+        <div class="mini-stat">
+            <div class="mini-stat-icon green"><i class="bi bi-check-circle-fill"></i></div>
+            <div>
+                <div class="mini-stat-value">{{ $statsRanap['total_selesai'] }}</div>
+                <div class="mini-stat-label">Sudah Pulang</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="mini-stat">
+            <div class="mini-stat-icon purple"><i class="bi bi-gem"></i></div>
+            <div>
+                <div class="mini-stat-value">{{ $statsRanap['kelas_vvip'] }}</div>
+                <div class="mini-stat-label">Kelas VVIP</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
         <div class="mini-stat">
             <div class="mini-stat-icon amber"><i class="bi bi-star-fill"></i></div>
             <div>
@@ -261,34 +291,34 @@
             </div>
         </div>
     </div>
-    <div class="col-6 col-md-2">
+    <div class="col-6 col-md-3">
         <div class="mini-stat">
-            <div class="mini-stat-icon purple"><i class="bi bi-1-circle-fill"></i></div>
+            <div class="mini-stat-icon indigo"><i class="bi bi-1-circle-fill"></i></div>
             <div>
                 <div class="mini-stat-value">{{ $statsRanap['kelas_i'] }}</div>
-                <div class="mini-stat-label">Kelas I</div>
+                <div class="mini-stat-label">Kelas 1</div>
             </div>
         </div>
     </div>
-    <div class="col-6 col-md-2">
+    <div class="col-6 col-md-3">
         <div class="mini-stat">
             <div class="mini-stat-icon teal"><i class="bi bi-2-circle-fill"></i></div>
             <div>
                 <div class="mini-stat-value">{{ $statsRanap['kelas_ii'] }}</div>
-                <div class="mini-stat-label">Kelas II</div>
+                <div class="mini-stat-label">Kelas 2</div>
             </div>
         </div>
     </div>
-    <div class="col-6 col-md-2">
+    <div class="col-6 col-md-3">
         <div class="mini-stat">
             <div class="mini-stat-icon cyan"><i class="bi bi-3-circle-fill"></i></div>
             <div>
                 <div class="mini-stat-value">{{ $statsRanap['kelas_iii'] }}</div>
-                <div class="mini-stat-label">Kelas III</div>
+                <div class="mini-stat-label">Kelas 3</div>
             </div>
         </div>
     </div>
-    <div class="col-6 col-md-2">
+    <div class="col-6 col-md-3">
         <div class="mini-stat">
             <div class="mini-stat-icon rose"><i class="bi bi-calendar-week-fill"></i></div>
             <div>
@@ -311,187 +341,355 @@
 @endif
 
 {{-- ===========================
-     TABEL PASIEN RAWAT INAP
+     TABEL PASIEN RAWAT INAP (2 TAB)
 =========================== --}}
 <div class="table-card">
-    <div class="table-card-header">
-        <h6 class="section-title">
-            <i class="bi bi-bed"></i>
-            @if($isDokter)
-                Pasien Ranap Saya — Sedang Dirawat
-            @else
-                Semua Pasien Rawat Inap — Sedang Dirawat
-            @endif
-        </h6>
-        <div class="d-flex align-items-center gap-2">
-            @if($isDokter)
-                <span style="display:inline-flex;align-items:center;gap:.3rem;font-size:.72rem;font-weight:700;
-                             background:rgba(13,112,68,.1);color:#0d7044;border:1px solid rgba(13,112,68,.2);
-                             border-radius:20px;padding:.2rem .75rem;">
-                    <i class="bi bi-person-badge-fill"></i> dr. {{ $nmDokter }}
-                </span>
-            @endif
-            <span style="font-size:.75rem;color:var(--text-muted);">
-                {{ count($pasienRanap) }} pasien
+    <div class="table-card-header bg-white pb-0 border-bottom-0">
+        <ul class="nav nav-tabs nav-tabs-custom flex-grow-1" id="ranapTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active fw-bold d-flex align-items-center gap-2" id="dirawat-tab" data-bs-toggle="tab" data-bs-target="#dirawatPane" type="button" role="tab" aria-controls="dirawatPane" aria-selected="true">
+                    <i class="bi bi-hospital-fill text-success"></i>
+                    <span>Masih Dirawat</span>
+                    <span class="badge bg-success rounded-pill ms-1" style="font-size:.72rem;">{{ count($pasienRanap) }}</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-bold d-flex align-items-center gap-2" id="selesai-tab" data-bs-toggle="tab" data-bs-target="#selesaiPane" type="button" role="tab" aria-controls="selesaiPane" aria-selected="false">
+                    <i class="bi bi-check-circle-fill text-primary"></i>
+                    <span>Sudah Pulang / Selesai</span>
+                    <span class="badge bg-secondary rounded-pill ms-1" style="font-size:.72rem;">{{ count($pasienRanapSelesai) }}</span>
+                </button>
+            </li>
+        </ul>
+        @if($isDokter)
+        <div class="py-2">
+            <span style="display:inline-flex;align-items:center;gap:.3rem;font-size:.72rem;font-weight:700;
+                         background:rgba(13,112,68,.1);color:#0d7044;border:1px solid rgba(13,112,68,.2);
+                         border-radius:20px;padding:.2rem .75rem;">
+                <i class="bi bi-person-badge-fill"></i> dr. {{ $nmDokter }}
             </span>
         </div>
-    </div>
-
-    @if(count($pasienRanap) > 0)
-    <div class="table-responsive">
-        <table class="table table-custom" id="tabelRanap">
-            <thead>
-                <tr>
-                    <th style="width:40px;">#</th>
-                    <th>Pasien</th>
-                    <th>No. Rawat</th>
-                    <th>Masuk</th>
-                    <th>Bangsal / Kamar</th>
-                    <th>Kelas</th>
-                    <th>Lama Inap</th>
-                    @if(!$isDokter)
-                    <th>Dokter / Spesialis</th>
-                    @endif
-                    <th>Diagnosa</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($pasienRanap as $i => $p)
-                @php
-                    // Hitung lama inap
-                    $tglMasuk = ($p->tgl_masuk && $p->tgl_masuk !== '0000-00-00')
-                        ? \Carbon\Carbon::parse($p->tgl_masuk) : null;
-                    $lamaHari = $tglMasuk ? $tglMasuk->diffInDays(now()) : ($p->lama ?? 0);
-                    // Kelas
-                    $kelas = strtoupper($p->kelas ?? '');
-                @endphp
-                <tr>
-                    <td style="color:var(--text-muted);font-size:.8rem;">{{ $i + 1 }}</td>
-                    <td>
-                        <div class="d-flex align-items-center gap-2">
-                            <div class="patient-avatar">
-                                {{ strtoupper(substr($p->nm_pasien ?? 'P', 0, 2)) }}
-                            </div>
-                            <div>
-                                <div style="font-weight:600;font-size:.855rem;">
-                                    {{ $p->nm_pasien ?? '-' }}
-                                </div>
-                                <div style="font-size:.72rem;color:var(--text-muted);">
-                                    {{ $p->jk === 'L' ? '♂ Laki-laki' : '♀ Perempuan' }}
-                                    @if($p->tgl_lahir && $p->tgl_lahir !== '0000-00-00')
-                                        · {{ \Carbon\Carbon::parse($p->tgl_lahir)->age }} thn
-                                    @endif
-                                    · {{ $p->no_rkm_medis ?? '-' }}
-                                </div>
-                            </div>
-                        </div>
-                    </td>
-                    <td>
-                        <span style="font-size:.78rem;font-family:monospace;color:var(--text-muted);">
-                            {{ $p->no_rawat }}
-                        </span>
-                    </td>
-                    <td>
-                        <div style="font-size:.83rem;font-weight:600;">
-                            {{ $tglMasuk ? $tglMasuk->locale('id')->isoFormat('D MMM YYYY') : '-' }}
-                        </div>
-                        @if($p->jam_masuk)
-                        <div style="font-size:.72rem;color:var(--text-muted);">
-                            Pukul {{ substr($p->jam_masuk, 0, 5) }}
-                        </div>
-                        @endif
-                    </td>
-                    <td>
-                        <div style="font-size:.83rem;font-weight:600;">
-                            {{ $p->nm_bangsal ?? $p->kd_bangsal ?? '-' }}
-                        </div>
-                        @if($p->kd_kamar)
-                        <div style="font-size:.72rem;color:var(--text-muted);">
-                            <i class="bi bi-door-open"></i> Kamar {{ $p->kd_kamar }}
-                        </div>
-                        @endif
-                    </td>
-                    <td>
-                        @if(str_contains($kelas, 'VIP'))
-                            <span class="badge-kelas-vip"><i class="bi bi-star-fill"></i> VIP</span>
-                        @elseif(str_contains($kelas, 'III'))
-                            <span class="badge-kelas-iii">Kelas III</span>
-                        @elseif(str_contains($kelas, 'II'))
-                            <span class="badge-kelas-ii">Kelas II</span>
-                        @elseif(str_contains($kelas, 'I'))
-                            <span class="badge-kelas-i">Kelas I</span>
-                        @else
-                            <span class="badge-kelas-other">{{ $p->kelas ?? '-' }}</span>
-                        @endif
-                    </td>
-                    <td>
-                        <span class="ranap-info-chip lama">
-                            <i class="bi bi-calendar-week"></i>
-                            {{ $lamaHari }} hari
-                        </span>
-                    </td>
-                    @if(!$isDokter)
-                    <td>
-                        <div style="font-size:.83rem;font-weight:600;">
-                            {{ $p->nm_dokter ? 'dr. '.$p->nm_dokter : '-' }}
-                        </div>
-                        @if($p->spesialis)
-                        <div style="font-size:.72rem;color:var(--text-muted);">
-                            {{ $p->spesialis }}
-                        </div>
-                        @endif
-                    </td>
-                    @endif
-                    <td>
-                        @if($p->nm_penyakit)
-                            <span class="ranap-info-chip diagnosa" title="{{ $p->nm_penyakit }}">
-                                <i class="bi bi-file-medical"></i>
-                                {{ $p->nm_penyakit }}
-                            </span>
-                            @if($p->kd_penyakit)
-                            <div style="font-size:.68rem;color:var(--text-muted);margin-top:.2rem;">
-                                ICD: {{ $p->kd_penyakit }}
-                            </div>
-                            @endif
-                        @else
-                            <span style="color:var(--text-muted);font-size:.8rem;">—</span>
-                        @endif
-                    </td>
-                    <td>
-                        <span class="badge-dirawat">
-                            <span class="dot-pulse"></span>
-                            Dirawat
-                        </span>
-                    </td>
-                </tr>
-                @endforeach
-            </tbody>
-        </table>
-    </div>
-    @else
-    <div class="empty-state">
-        <i class="bi bi-hospital"></i>
-        @if($isDokter)
-            <p style="font-weight:600;">Tidak ada pasien rawat inap Anda saat ini</p>
-            <p style="font-size:.8rem;margin-top:.35rem;color:var(--text-muted);">
-                Pasien yang dirawat atas nama <strong>dr. {{ $nmDokter }}</strong> akan tampil di sini.
-            </p>
-        @else
-            <p style="font-weight:600;">Tidak ada pasien rawat inap saat ini</p>
-            <p style="font-size:.8rem;margin-top:.35rem;color:var(--text-muted);">
-                Data akan muncul ketika ada pasien yang sedang menjalani rawat inap.
-            </p>
         @endif
     </div>
-    @endif
+
+    <div class="tab-content" id="ranapTabContent">
+        {{-- TAB 1: MASIH DIRAWAT --}}
+        <div class="tab-pane fade show active p-3" id="dirawatPane" role="tabpanel" aria-labelledby="dirawat-tab">
+            @if(count($pasienRanap) > 0)
+            <div class="table-responsive">
+                <table class="table table-custom table-hover" id="tabelRanapAktif">
+                    <thead>
+                        <tr>
+                            <th style="width:40px;">#</th>
+                            <th>Pasien</th>
+                            <th>No. Rawat</th>
+                            <th>Masuk</th>
+                            <th>Bangsal / Kamar</th>
+                            <th>Kelas</th>
+                            <th>Lama Inap</th>
+                            @if(!$isDokter)
+                            <th>Dokter / Spesialis</th>
+                            @endif
+                            <th>Diagnosa</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($pasienRanap as $i => $p)
+                        @php
+                            $tglMasuk = ($p->tgl_masuk && $p->tgl_masuk !== '0000-00-00')
+                                ? \Carbon\Carbon::parse($p->tgl_masuk) : null;
+                            $lamaHari = $tglMasuk ? $tglMasuk->diffInDays(now()) : ($p->lama ?? 0);
+                            $kelas = strtoupper($p->kelas ?? '');
+                            $namaPasien = ucwords(strtolower($p->nm_pasien ?? '-'));
+                            $namaDokter = $p->nm_dokter ? (Str::startsWith(strtolower($p->nm_dokter), 'dr.') ? $p->nm_dokter : 'dr. '.$p->nm_dokter) : '-';
+                        @endphp
+                        <tr>
+                            <td style="color:var(--text-muted);font-size:.8rem;">{{ $i + 1 }}</td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="patient-avatar">
+                                        {{ strtoupper(substr($p->nm_pasien ?? 'P', 0, 2)) }}
+                                    </div>
+                                    <div>
+                                        <div class="patient-title-text">
+                                            {{ $namaPasien }}
+                                        </div>
+                                        <div class="patient-sub-text">
+                                            {{ $p->jk === 'L' ? '♂ Laki-laki' : '♀ Perempuan' }}
+                                            @if($p->tgl_lahir && $p->tgl_lahir !== '0000-00-00')
+                                                · {{ \Carbon\Carbon::parse($p->tgl_lahir)->age }} thn
+                                            @endif
+                                            · RM: {{ $p->no_rkm_medis ?? '-' }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="no-rawat-badge">
+                                    {{ $p->no_rawat }}
+                                </span>
+                            </td>
+                            <td>
+                                <div style="font-size:.83rem;font-weight:600;color:#1e293b;">
+                                    {{ $tglMasuk ? $tglMasuk->locale('id')->isoFormat('D MMM YYYY') : '-' }}
+                                </div>
+                                @if($p->jam_masuk)
+                                <div style="font-size:.72rem;color:#64748b;">
+                                    <i class="bi bi-clock me-1"></i>{{ substr($p->jam_masuk, 0, 5) }} WIB
+                                </div>
+                                @endif
+                            </td>
+                            <td>
+                                <div style="font-size:.83rem;font-weight:600;color:#1e293b;">
+                                    {{ ucwords(strtolower($p->nm_bangsal ?? $p->kd_bangsal ?? '-')) }}
+                                </div>
+                                @if($p->kd_kamar)
+                                <div style="font-size:.72rem;color:#64748b;">
+                                    <i class="bi bi-door-open me-1"></i>Kamar {{ $p->kd_kamar }}
+                                </div>
+                                @endif
+                            </td>
+                            <td>
+                                @if(str_contains($kelas, 'VVIP'))
+                                    <span class="badge-kelas-vvip"><i class="bi bi-gem me-1"></i>{{ $p->kelas }}</span>
+                                @elseif(str_contains($kelas, 'VIP'))
+                                    <span class="badge-kelas-vip"><i class="bi bi-star-fill me-1"></i>{{ $p->kelas }}</span>
+                                @elseif(str_contains($kelas, '3') || str_contains($kelas, 'III'))
+                                    <span class="badge-kelas-iii">{{ $p->kelas }}</span>
+                                @elseif(str_contains($kelas, '2') || str_contains($kelas, 'II'))
+                                    <span class="badge-kelas-ii">{{ $p->kelas }}</span>
+                                @elseif(str_contains($kelas, '1') || str_contains($kelas, 'I'))
+                                    <span class="badge-kelas-i">{{ $p->kelas }}</span>
+                                @else
+                                    <span class="badge-kelas-other">{{ $p->kelas ?? '-' }}</span>
+                                @endif
+                            </td>
+                            <td>
+                                <span class="ranap-info-chip lama">
+                                    <i class="bi bi-calendar-week"></i>
+                                    {{ $lamaHari }} hari
+                                </span>
+                            </td>
+                            @if(!$isDokter)
+                            <td>
+                                <div style="font-size:.83rem;font-weight:600;color:#1e293b;">
+                                    {{ $namaDokter }}
+                                </div>
+                                @if($p->spesialis)
+                                <div style="font-size:.72rem;color:#64748b;">
+                                    {{ $p->spesialis }}
+                                </div>
+                                @endif
+                            </td>
+                            @endif
+                            <td>
+                                @if($p->nm_penyakit)
+                                    <span class="ranap-info-chip diagnosa" title="{{ $p->nm_penyakit }}">
+                                        <i class="bi bi-file-medical"></i>
+                                        {{ $p->nm_penyakit }}
+                                    </span>
+                                    @if($p->kd_penyakit)
+                                    <div style="font-size:.68rem;color:#64748b;margin-top:.2rem;">
+                                        ICD: {{ $p->kd_penyakit }}
+                                    </div>
+                                    @endif
+                                @else
+                                    <span style="color:#94a3b8;font-size:.8rem;">—</span>
+                                @endif
+                            </td>
+                            <td>
+                                <span class="badge-dirawat">
+                                    <span class="dot-pulse"></span>
+                                    Dirawat
+                                </span>
+                            </td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            @else
+            <div class="empty-state">
+                <i class="bi bi-hospital"></i>
+                @if($isDokter)
+                    <p style="font-weight:600;">Tidak ada pasien rawat inap Anda yang sedang dirawat saat ini</p>
+                    <p style="font-size:.8rem;margin-top:.35rem;color:var(--text-muted);">
+                        Pasien yang dirawat atas nama <strong>dr. {{ $nmDokter }}</strong> akan tampil di sini.
+                    </p>
+                @else
+                    <p style="font-weight:600;">Tidak ada pasien rawat inap yang sedang dirawat saat ini</p>
+                    <p style="font-size:.8rem;margin-top:.35rem;color:var(--text-muted);">
+                        Data akan muncul ketika ada pasien yang sedang menjalani rawat inap.
+                    </p>
+                @endif
+            </div>
+            @endif
+        </div>
+
+        {{-- TAB 2: SUDAH SELESAI / PULANG --}}
+        <div class="tab-pane fade p-3" id="selesaiPane" role="tabpanel" aria-labelledby="selesai-tab">
+            @if(count($pasienRanapSelesai) > 0)
+            <div class="table-responsive">
+                <table class="table table-custom table-hover" id="tabelRanapSelesai">
+                    <thead>
+                        <tr>
+                            <th style="width:40px;">#</th>
+                            <th>Pasien</th>
+                            <th>No. Rawat</th>
+                            <th>Masuk — Keluar</th>
+                            <th>Bangsal / Kamar</th>
+                            <th>Kelas</th>
+                            <th>Lama</th>
+                            @if(!$isDokter)
+                            <th>Dokter / Spesialis</th>
+                            @endif
+                            <th>Diagnosa</th>
+                            <th>Status Pulang</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($pasienRanapSelesai as $i => $p)
+                        @php
+                            $tglMasuk  = ($p->tgl_masuk && $p->tgl_masuk !== '0000-00-00')
+                                ? \Carbon\Carbon::parse($p->tgl_masuk) : null;
+                            $tglKeluar = ($p->tgl_keluar && $p->tgl_keluar !== '0000-00-00')
+                                ? \Carbon\Carbon::parse($p->tgl_keluar) : null;
+                            $lamaHari  = $p->lama ?? ($tglMasuk && $tglKeluar ? $tglMasuk->diffInDays($tglKeluar) : 0);
+                            $kelas     = strtoupper($p->kelas ?? '');
+                            $stts      = trim($p->stts_pulang ?? '-');
+                            $namaPasien = ucwords(strtolower($p->nm_pasien ?? '-'));
+                            $namaDokter = $p->nm_dokter ? (Str::startsWith(strtolower($p->nm_dokter), 'dr.') ? $p->nm_dokter : 'dr. '.$p->nm_dokter) : '-';
+
+                            // Badge Status Pulang
+                            $badgeClass = 'bg-secondary text-white';
+                            if (in_array($stts, ['Sehat', 'Sembuh', 'Membaik', 'Atas Persetujuan Dokter'])) {
+                                $badgeClass = 'bg-success text-white';
+                            } elseif (in_array($stts, ['Rujuk', 'APS', 'Atas Permintaan Sendiri', 'Pulang Paksa'])) {
+                                $badgeClass = 'bg-warning text-dark';
+                            } elseif (in_array($stts, ['+', 'Meninggal'])) {
+                                $badgeClass = 'bg-danger text-white';
+                            }
+                        @endphp
+                        <tr>
+                            <td style="color:var(--text-muted);font-size:.8rem;">{{ $i + 1 }}</td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="patient-avatar" style="background:linear-gradient(135deg, #475569, #64748b);">
+                                        {{ strtoupper(substr($p->nm_pasien ?? 'P', 0, 2)) }}
+                                    </div>
+                                    <div>
+                                        <div class="patient-title-text">
+                                            {{ $namaPasien }}
+                                        </div>
+                                        <div class="patient-sub-text">
+                                            {{ $p->jk === 'L' ? '♂ Laki-laki' : '♀ Perempuan' }}
+                                            @if($p->tgl_lahir && $p->tgl_lahir !== '0000-00-00')
+                                                · {{ \Carbon\Carbon::parse($p->tgl_lahir)->age }} thn
+                                            @endif
+                                            · RM: {{ $p->no_rkm_medis ?? '-' }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="no-rawat-badge">
+                                    {{ $p->no_rawat }}
+                                </span>
+                            </td>
+                            <td>
+                                <div style="font-size:.8rem;font-weight:600;color:#1e293b;">
+                                    <i class="bi bi-box-arrow-in-right text-success me-1"></i>
+                                    {{ $tglMasuk ? $tglMasuk->locale('id')->isoFormat('D MMM YYYY') : '-' }}
+                                </div>
+                                <div style="font-size:.8rem;font-weight:600;color:#64748b;">
+                                    <i class="bi bi-box-arrow-right text-danger me-1"></i>
+                                    {{ $tglKeluar ? $tglKeluar->locale('id')->isoFormat('D MMM YYYY') : '-' }}
+                                </div>
+                            </td>
+                            <td>
+                                <div style="font-size:.83rem;font-weight:600;color:#1e293b;">
+                                    {{ ucwords(strtolower($p->nm_bangsal ?? $p->kd_bangsal ?? '-')) }}
+                                </div>
+                                @if($p->kd_kamar)
+                                <div style="font-size:.72rem;color:#64748b;">
+                                    <i class="bi bi-door-open me-1"></i>Kamar {{ $p->kd_kamar }}
+                                </div>
+                                @endif
+                            </td>
+                            <td>
+                                @if(str_contains($kelas, 'VVIP'))
+                                    <span class="badge-kelas-vvip"><i class="bi bi-gem me-1"></i>{{ $p->kelas }}</span>
+                                @elseif(str_contains($kelas, 'VIP'))
+                                    <span class="badge-kelas-vip"><i class="bi bi-star-fill me-1"></i>{{ $p->kelas }}</span>
+                                @elseif(str_contains($kelas, '3') || str_contains($kelas, 'III'))
+                                    <span class="badge-kelas-iii">{{ $p->kelas }}</span>
+                                @elseif(str_contains($kelas, '2') || str_contains($kelas, 'II'))
+                                    <span class="badge-kelas-ii">{{ $p->kelas }}</span>
+                                @elseif(str_contains($kelas, '1') || str_contains($kelas, 'I'))
+                                    <span class="badge-kelas-i">{{ $p->kelas }}</span>
+                                @else
+                                    <span class="badge-kelas-other">{{ $p->kelas ?? '-' }}</span>
+                                @endif
+                            </td>
+                            <td>
+                                <span class="ranap-info-chip lama">
+                                    <i class="bi bi-calendar-check"></i>
+                                    {{ $lamaHari }} hari
+                                </span>
+                            </td>
+                            @if(!$isDokter)
+                            <td>
+                                <div style="font-size:.83rem;font-weight:600;color:#1e293b;">
+                                    {{ $namaDokter }}
+                                </div>
+                                @if($p->spesialis)
+                                <div style="font-size:.72rem;color:#64748b;">
+                                    {{ $p->spesialis }}
+                                </div>
+                                @endif
+                            </td>
+                            @endif
+                            <td>
+                                @if($p->nm_penyakit)
+                                    <span class="ranap-info-chip diagnosa" title="{{ $p->nm_penyakit }}">
+                                        <i class="bi bi-file-medical"></i>
+                                        {{ $p->nm_penyakit }}
+                                    </span>
+                                    @if($p->kd_penyakit)
+                                    <div style="font-size:.68rem;color:#64748b;margin-top:.2rem;">
+                                        ICD: {{ $p->kd_penyakit }}
+                                    </div>
+                                    @endif
+                                @else
+                                    <span style="color:#94a3b8;font-size:.8rem;">—</span>
+                                @endif
+                            </td>
+                            <td>
+                                <span class="badge {{ $badgeClass }}" style="font-size:.72rem;padding:.25rem .65rem;border-radius:20px;font-weight:600;">
+                                    {{ $stts }}
+                                </span>
+                            </td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            @else
+            <div class="empty-state">
+                <i class="bi bi-check-circle"></i>
+                <p style="font-weight:600;">Belum ada riwayat pasien rawat inap yang selesai/pulang</p>
+            </div>
+            @endif
+        </div>
+    </div>
 </div>
 
 @endsection
 
 @push('scripts')
 <script>
-(function () {
+$(document).ready(function () {
     // === Live Clock ===
     function tick() {
         const now = new Date();
@@ -503,6 +701,31 @@
     }
     tick();
     setInterval(tick, 1000);
-})();
+
+    // === Initialize DataTable: Masih Dirawat ===
+    if ($('#tabelRanapAktif').length > 0) {
+        $('#tabelRanapAktif').DataTable({
+            order: [[3, 'desc']], // Urutkan berdasarkan tgl masuk terbaru
+            columnDefs: [
+                { orderable: false, targets: [0] }
+            ]
+        });
+    }
+
+    // === Initialize DataTable: Sudah Pulang / Selesai ===
+    if ($('#tabelRanapSelesai').length > 0) {
+        var dtSelesai = $('#tabelRanapSelesai').DataTable({
+            order: [[3, 'desc']], // Urutkan berdasarkan tgl keluar terbaru
+            columnDefs: [
+                { orderable: false, targets: [0] }
+            ]
+        });
+
+        // Penyesuaian kolom DataTables saat ganti Tab
+        $('button[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
+            $.fn.dataTable.tables({ visible: true, api: true }).columns.adjust();
+        });
+    }
+});
 </script>
 @endpush

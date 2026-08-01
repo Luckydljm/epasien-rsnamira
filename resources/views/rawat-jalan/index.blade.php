@@ -364,6 +364,10 @@
             </thead>
             <tbody>
                 @foreach($pasienList as $i => $p)
+                @php
+                    $namaPasien = ucwords(strtolower($p->nm_pasien ?? '-'));
+                    $namaDokter = $p->nm_dokter ? (Str::startsWith(strtolower($p->nm_dokter), 'dr.') ? $p->nm_dokter : 'dr. '.$p->nm_dokter) : '-';
+                @endphp
                 <tr>
                     <td style="color:var(--text-muted);font-size:.8rem;">{{ $i + 1 }}</td>
                     <td>
@@ -372,30 +376,37 @@
                                 {{ strtoupper(substr($p->nm_pasien ?? 'P', 0, 2)) }}
                             </div>
                             <div>
-                                <div style="font-weight:600;font-size:.855rem;">
-                                    {{ $p->nm_pasien ?? '-' }}
+                                <div class="patient-title-text">
+                                    {{ $namaPasien }}
                                 </div>
-                                <div style="font-size:.72rem;color:var(--text-muted);">
+                                <div class="patient-sub-text">
                                     {{ $p->jk === 'L' ? '♂ Laki-laki' : '♀ Perempuan' }}
                                     @if($p->tgl_lahir && $p->tgl_lahir !== '0000-00-00')
                                         · {{ \Carbon\Carbon::parse($p->tgl_lahir)->age }} thn
                                     @endif
+                                    · RM: {{ $p->no_rkm_medis ?? '-' }}
                                 </div>
                             </div>
                         </div>
                     </td>
                     <td>
-                        <span style="font-size:.78rem;font-family:monospace;color:var(--text-muted);">
+                        <span class="no-rawat-badge">
                             {{ $p->no_rawat }}
                         </span>
                     </td>
-                    <td style="font-size:.83rem;font-weight:600;">
-                        {{ substr($p->jam_reg ?? '', 0, 5) }}
+                    <td>
+                        <div style="font-size:.83rem;font-weight:600;color:#1e293b;">
+                            {{ substr($p->jam_reg ?? '', 0, 5) }} WIB
+                        </div>
                     </td>
-                    <td style="font-size:.83rem;">{{ $p->nm_poli ?? '-' }}</td>
+                    <td style="font-size:.83rem;font-weight:600;color:#1e293b;">
+                        {{ ucwords(strtolower($p->nm_poli ?? '-')) }}
+                    </td>
                     @if(!$isDokter)
-                    <td style="font-size:.82rem;">
-                        <span style="font-weight:500;">{{ $p->nm_dokter ?? '-' }}</span>
+                    <td>
+                        <div style="font-size:.83rem;font-weight:600;color:#1e293b;">
+                            {{ $namaDokter }}
+                        </div>
                     </td>
                     @endif
                     <td>
@@ -456,7 +467,7 @@
 
 @push('scripts')
 <script>
-(function () {
+$(document).ready(function () {
     // === Live Clock ===
     function tick() {
         const now = new Date();
@@ -469,16 +480,15 @@
     tick();
     setInterval(tick, 1000);
 
-    // === Simple search filter ===
-    const searchInput = document.getElementById('searchRajal');
-    if (searchInput) {
-        searchInput.addEventListener('input', function () {
-            const q = this.value.toLowerCase();
-            document.querySelectorAll('#tabelRajal tbody tr').forEach(row => {
-                row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
-            });
+    // === Initialize DataTable ===
+    if ($('#tabelRajal').length > 0) {
+        $('#tabelRajal').DataTable({
+            order: [[3, 'asc']], // Urutkan berdasarkan jam registrasi
+            columnDefs: [
+                { orderable: false, targets: [0] } // nonaktifkan sorting nomor urut
+            ]
         });
     }
-})();
+});
 </script>
 @endpush
