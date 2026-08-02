@@ -409,10 +409,9 @@
             <div class="brand-rs-sub">Sistem Informasi Pasien</div>
 
             <ul class="feature-list">
-                <li><i class="bi bi-person-check-fill"></i> Pendaftaran & Registrasi Pasien</li>
-                <li><i class="bi bi-clipboard2-pulse-fill"></i> Rekam Medis Elektronik Terintegrasi</li>
-                <li><i class="bi bi-building-fill-add"></i> Manajemen Rawat Inap & Rawat Jalan</li>
-                <li><i class="bi bi-cash-stack"></i> Billing & Kasir Terpadu</li>
+                <li><i class="bi bi-hospital"></i> Manajemen Pasien Rawat Inap & Rawat Jalan</li>
+                <li><i class="bi bi-clipboard2-pulse-fill"></i> Layanan & Pemeriksaan Penunjang Medis</li>
+                <li><i class="bi bi-journal-medical"></i> Rekam Medis Elektronik (RME) Terintegrasi</li>
                 <li><i class="bi bi-shield-lock-fill"></i> Keamanan Data Pasien Tingkat Tinggi</li>
             </ul>
 

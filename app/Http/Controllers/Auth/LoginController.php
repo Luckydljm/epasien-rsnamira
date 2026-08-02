@@ -19,7 +19,7 @@ class LoginController extends Controller
     public function showLoginForm()
     {
         if (session()->has('auth_user')) {
-            return redirect()->route('dashboard');
+            return redirect()->route('portal');
         }
         return view('auth.login');
     }
@@ -57,7 +57,7 @@ class LoginController extends Controller
             RateLimiter::clear($throttleKey);
             $this->createSession($request, 'Admin Utama', 'Admin Utama', true);
             $this->logTracker($request, $idUser, 'Admin Utama', 'Login');
-            return redirect()->route('dashboard')
+            return redirect()->route('portal')
                 ->with('success', 'Selamat datang, Admin Utama!');
         }
 
@@ -85,7 +85,7 @@ class LoginController extends Controller
             $namaPegawai = $dokterInfo->nm_dokter ?? UserKhanza::getNamaPegawai($kodeUser);
             $this->createSession($request, $kodeUser, $namaPegawai, false, (array) $user, $dokterInfo);
             $this->logTracker($request, $idUser, $namaPegawai, 'Login');
-            return redirect()->route('dashboard')
+            return redirect()->route('portal')
                 ->with('success', "Selamat datang, dr. {$namaPegawai}!");
         }
 

@@ -8,26 +8,24 @@ use Illuminate\Support\Facades\DB;
 class DashboardController extends Controller
 {
     /**
-     * Halaman utama dashboard.
-     * - Dokter login → semua data difilter per dokter ybs
-     * - Admin login  → full akses, semua data tampil
+     * Halaman utama dashboard — menyesuaikan dengan Portal Aktif (Rawat Jalan vs Rawat Inap).
      */
     public function index()
     {
-        $kodeUser  = session('auth_user.kode');
-        $isAdmin   = session('auth_user.is_admin', false);
-        $isDokter  = session('auth_user.is_dokter', false);
-        $nmDokter  = session('auth_user.nm_dokter');
-        $spesialis = session('auth_user.spesialis');
+        $kodeUser     = session('auth_user.kode');
+        $isAdmin      = session('auth_user.is_admin', false);
+        $isDokter     = session('auth_user.is_dokter', false);
+        $nmDokter     = session('auth_user.nm_dokter');
+        $spesialis    = session('auth_user.spesialis');
+        $activePortal = session('active_portal', 'rajal');
 
-        // Jika dokter → filter berdasarkan kd_dokter, jika admin → null (semua)
+        // Dokter → filter per kd_dokter
         $kdDokterFilter = (!$isAdmin && $isDokter) ? $kodeUser : null;
 
-        $stats             = $this->getStatistik($kdDokterFilter, $isAdmin);
-        $kunjunganMingguan = $this->getKunjunganMingguan($kdDokterFilter);
-        $pasienTerbaru     = $this->getPasienTerbaru($kdDokterFilter);
+        $stats             = $this->getStatistik($kdDokterFilter, $isAdmin, $activePortal);
+        $kunjunganMingguan = $this->getKunjunganMingguan($kdDokterFilter, $activePortal);
+        $pasienTerbaru     = $this->getPasienTerbaru($kdDokterFilter, $activePortal);
 
-        // Info dokter yang login (diambil dari session)
         $dokterInfo = null;
         if ($isDokter) {
             $dokterInfo = (object) [
@@ -39,27 +37,14 @@ class DashboardController extends Controller
 
         return view('dashboard.index', compact(
             'stats', 'pasienTerbaru', 'kunjunganMingguan',
-            'isDokter', 'isAdmin', 'dokterInfo', 'kdDokterFilter'
+            'isDokter', 'isAdmin', 'dokterInfo', 'kdDokterFilter', 'activePortal'
         ));
     }
 
     /**
-     * Statistik dashboard.
-     * Jika $kdDokter diisi → semua angka adalah milik dokter tsb.
-     * Jika null (admin)    → angka global RS.
-     *
-     * Mode dokter:
-     *   pasien_hari_ini  = pasien terdaftar dengan dokter ini hari ini
-     *   rawat_jalan      = pasien ralan dokter ini hari ini
-     *   rawat_inap       = pasien ranap dokter ini yang SEDANG dirawat
-     *   pasien_igd       = pasien IGD dengan dokter ini hari ini
-     *   total_dokter     = jumlah pasien selesai terlayani hari ini (bukan total dokter)
-     *   kamar_terpakai   = jumlah kamar yang dihuni pasien dokter ini
-     *
-     * Mode admin:
-     *   semua stat = data global RS seperti biasa
+     * Statistik dashboard disesuaikan dengan activePortal (rajal vs ranap).
      */
-    private function getStatistik(?string $kdDokter, bool $isAdmin): array
+    private function getStatistik(?string $kdDokter, bool $isAdmin, string $activePortal = 'rajal'): array
     {
         $today = now()->toDateString();
 
@@ -67,150 +52,163 @@ class DashboardController extends Controller
             'pasien_hari_ini' => 0,
             'rawat_jalan'     => 0,
             'rawat_inap'      => 0,
-            'total_dokter'    => 0,   // admin: jml dokter aktif | dokter: jml pasien terlayani
+            'total_dokter'    => 0,
             'pasien_igd'      => 0,
             'kamar_terpakai'  => 0,
         ];
 
         try {
             if ($kdDokter !== null) {
-                // ============================================================
-                // MODE DOKTER: semua data difilter per kd_dokter
-                // ============================================================
+                // Mode Dokter
+                if ($activePortal === 'ranap') {
+                    // Rawat Inap aktif milik dokter ini
+                    $r = DB::selectOne(
+                        "SELECT COUNT(DISTINCT ki.no_rawat) AS jml
+                         FROM (
+                             SELECT no_rawat FROM kamar_inap
+                             WHERE tgl_keluar IS NULL OR tgl_keluar = '0000-00-00'
+                         ) ki
+                         INNER JOIN reg_periksa rp ON rp.no_rawat = ki.no_rawat
+                         LEFT JOIN (
+                             SELECT no_rawat, MIN(kd_dokter) AS kd_dokter
+                             FROM dpjp_ranap
+                             GROUP BY no_rawat
+                         ) dpjp ON dpjp.no_rawat = ki.no_rawat
+                         WHERE rp.kd_dokter = ? OR dpjp.kd_dokter = ?",
+                        [$kdDokter, $kdDokter]
+                    );
+                    $defaults['rawat_inap'] = (int) ($r?->jml ?? 0);
 
-                // Total pasien terdaftar hari ini (milik dokter ini)
-                $r = DB::selectOne(
-                    "SELECT COUNT(*) AS jml FROM reg_periksa
-                     WHERE tgl_registrasi = ? AND kd_dokter = ?",
-                    [$today, $kdDokter]
-                );
-                $defaults['pasien_hari_ini'] = (int) ($r?->jml ?? 0);
+                    // Kamar yang dihuni pasien dokter ini
+                    $r = DB::selectOne(
+                        "SELECT COUNT(DISTINCT ki.no_rawat) AS jml
+                         FROM (
+                             SELECT no_rawat FROM kamar_inap
+                             WHERE tgl_keluar IS NULL OR tgl_keluar = '0000-00-00'
+                         ) ki
+                         INNER JOIN reg_periksa rp ON rp.no_rawat = ki.no_rawat
+                         WHERE rp.kd_dokter = ?",
+                        [$kdDokter]
+                    );
+                    $defaults['kamar_terpakai'] = (int) ($r?->jml ?? 0);
 
-                // Rawat Jalan dokter ini hari ini
-                $r = DB::selectOne(
-                    "SELECT COUNT(*) AS jml FROM reg_periksa rp
-                     LEFT JOIN poliklinik pol ON pol.kd_poli = rp.kd_poli
-                     WHERE rp.tgl_registrasi = ? AND rp.kd_dokter = ?
-                       AND (rp.status_lanjut = 'Ralan'
-                            OR pol.nm_poli LIKE '%IGD%'
-                            OR pol.nm_poli LIKE '%UGD%')",
-                    [$today, $kdDokter]
-                );
-                $defaults['rawat_jalan'] = (int) ($r?->jml ?? 0);
+                    // Total pasien ranap masuk hari ini (milik dokter ini)
+                    $r = DB::selectOne(
+                        "SELECT COUNT(*) AS jml FROM reg_periksa
+                         WHERE tgl_registrasi = ? AND status_lanjut = 'Ranap' AND kd_dokter = ?",
+                        [$today, $kdDokter]
+                    );
+                    $defaults['pasien_hari_ini'] = (int) ($r?->jml ?? 0);
+                } else {
+                    // Rawat Jalan milik dokter ini hari ini
+                    $r = DB::selectOne(
+                        "SELECT COUNT(*) AS jml FROM reg_periksa rp
+                         LEFT JOIN poliklinik pol ON pol.kd_poli = rp.kd_poli
+                         WHERE rp.tgl_registrasi = ? AND rp.kd_dokter = ?
+                           AND (rp.status_lanjut = 'Ralan'
+                                OR pol.nm_poli LIKE '%IGD%'
+                                OR pol.nm_poli LIKE '%UGD%')",
+                        [$today, $kdDokter]
+                    );
+                    $defaults['rawat_jalan'] = (int) ($r?->jml ?? 0);
+                    $defaults['pasien_hari_ini'] = $defaults['rawat_jalan'];
 
-                // Rawat Inap (rekap keseluruhan registrasi hari ini milik dokter ini)
-                $r = DB::selectOne(
-                    "SELECT COUNT(*) AS jml FROM reg_periksa
-                     WHERE tgl_registrasi = ? AND status_lanjut = 'Ranap' AND kd_dokter = ?",
-                    [$today, $kdDokter]
-                );
-                $defaults['rawat_inap'] = (int) ($r?->jml ?? 0);
+                    // Pasien IGD
+                    $r = DB::selectOne(
+                        "SELECT COUNT(*) AS jml
+                         FROM reg_periksa rp
+                         JOIN poliklinik pol ON pol.kd_poli = rp.kd_poli
+                         WHERE rp.tgl_registrasi = ? AND rp.kd_dokter = ?
+                           AND (pol.nm_poli LIKE '%IGD%' OR pol.nm_poli LIKE '%UGD%')",
+                        [$today, $kdDokter]
+                    );
+                    $defaults['pasien_igd'] = (int) ($r?->jml ?? 0);
 
-                // Pasien IGD dokter ini hari ini
-                $r = DB::selectOne(
-                    "SELECT COUNT(*) AS jml
-                     FROM reg_periksa rp
-                     JOIN poliklinik pol ON pol.kd_poli = rp.kd_poli
-                     WHERE rp.tgl_registrasi = ? AND rp.kd_dokter = ?
-                       AND (pol.nm_poli LIKE '%IGD%' OR pol.nm_poli LIKE '%UGD%')",
-                    [$today, $kdDokter]
-                );
-                $defaults['pasien_igd'] = (int) ($r?->jml ?? 0);
-
-                // Pasien terlayani hari ini (ada data di pemeriksaan_ralan)
-                $r = DB::selectOne(
-                    "SELECT COUNT(DISTINCT rp.no_rawat) AS jml
-                     FROM reg_periksa rp
-                     INNER JOIN pemeriksaan_ralan pr ON pr.no_rawat = rp.no_rawat
-                     WHERE rp.tgl_registrasi = ? AND rp.kd_dokter = ?",
-                    [$today, $kdDokter]
-                );
-                $defaults['total_dokter'] = (int) ($r?->jml ?? 0);
-
-                // Kamar yang dihuni pasien dokter ini
-                $r = DB::selectOne(
-                    "SELECT COUNT(DISTINCT ki.no_rawat) AS jml
-                     FROM (
-                         SELECT no_rawat FROM kamar_inap
-                         WHERE tgl_keluar IS NULL OR tgl_keluar = '0000-00-00'
-                     ) ki
-                     INNER JOIN reg_periksa rp ON rp.no_rawat = ki.no_rawat
-                     WHERE rp.kd_dokter = ?",
-                    [$kdDokter]
-                );
-                $defaults['kamar_terpakai'] = (int) ($r?->jml ?? 0);
-
+                    // Pasien terlayani
+                    $r = DB::selectOne(
+                        "SELECT COUNT(DISTINCT rp.no_rawat) AS jml
+                         FROM reg_periksa rp
+                         INNER JOIN pemeriksaan_ralan pr ON pr.no_rawat = rp.no_rawat
+                         WHERE rp.tgl_registrasi = ? AND rp.kd_dokter = ?",
+                        [$today, $kdDokter]
+                    );
+                    $defaults['total_dokter'] = (int) ($r?->jml ?? 0);
+                }
             } else {
-                // ============================================================
-                // MODE ADMIN: data global RS
-                // ============================================================
+                // Mode Admin
+                if ($activePortal === 'ranap') {
+                    // Rawat Inap sedang dirawat
+                    $r = DB::selectOne(
+                        "SELECT COUNT(DISTINCT no_rawat) AS jml FROM kamar_inap
+                         WHERE tgl_keluar IS NULL OR tgl_keluar = '0000-00-00'"
+                    );
+                    $defaults['rawat_inap'] = (int) ($r?->jml ?? 0);
 
-                // Total kunjungan hari ini
-                $r = DB::selectOne(
-                    "SELECT COUNT(*) AS jml FROM reg_periksa WHERE tgl_registrasi = ?",
-                    [$today]
-                );
-                $defaults['pasien_hari_ini'] = (int) ($r?->jml ?? 0);
+                    // Kamar terpakai
+                    $r = DB::selectOne(
+                        "SELECT COUNT(*) AS jml FROM kamar_inap
+                         WHERE tgl_keluar IS NULL OR tgl_keluar = '0000-00-00'"
+                    );
+                    $defaults['kamar_terpakai'] = (int) ($r?->jml ?? 0);
 
-                // Rawat Jalan
-                $r = DB::selectOne(
-                    "SELECT COUNT(*) AS jml FROM reg_periksa
-                     WHERE tgl_registrasi = ? AND status_lanjut = 'Ralan'",
-                    [$today]
-                );
-                $defaults['rawat_jalan'] = (int) ($r?->jml ?? 0);
+                    // Pasien ranap masuk hari ini
+                    $r = DB::selectOne(
+                        "SELECT COUNT(*) AS jml FROM reg_periksa
+                         WHERE tgl_registrasi = ? AND status_lanjut = 'Ranap'",
+                        [$today]
+                    );
+                    $defaults['pasien_hari_ini'] = (int) ($r?->jml ?? 0);
+                } else {
+                    // Rawat Jalan global hari ini
+                    $r = DB::selectOne(
+                        "SELECT COUNT(*) AS jml FROM reg_periksa
+                         WHERE tgl_registrasi = ? AND status_lanjut = 'Ralan'",
+                        [$today]
+                    );
+                    $defaults['rawat_jalan'] = (int) ($r?->jml ?? 0);
+                    $defaults['pasien_hari_ini'] = $defaults['rawat_jalan'];
 
-                // Rawat Inap sedang dirawat (dari kamar_inap)
-                $r = DB::selectOne(
-                    "SELECT COUNT(DISTINCT no_rawat) AS jml FROM kamar_inap
-                     WHERE tgl_keluar IS NULL OR tgl_keluar = '0000-00-00'"
-                );
-                $defaults['rawat_inap'] = (int) ($r?->jml ?? 0);
+                    // Pasien IGD global
+                    $r = DB::selectOne(
+                        "SELECT COUNT(*) AS jml FROM reg_periksa rp
+                         JOIN poliklinik p ON rp.kd_poli = p.kd_poli
+                         WHERE rp.tgl_registrasi = ?
+                           AND (p.nm_poli LIKE '%IGD%' OR p.nm_poli LIKE '%UGD%')",
+                        [$today]
+                    );
+                    $defaults['pasien_igd'] = (int) ($r?->jml ?? 0);
 
-                // Total Dokter Aktif
-                $r = DB::selectOne(
-                    "SELECT COUNT(*) AS jml FROM dokter WHERE status = '1'"
-                );
-                $defaults['total_dokter'] = (int) ($r?->jml ?? 0);
-
-                // Pasien IGD hari ini
-                $r = DB::selectOne(
-                    "SELECT COUNT(*) AS jml FROM reg_periksa rp
-                     JOIN poliklinik p ON rp.kd_poli = p.kd_poli
-                     WHERE rp.tgl_registrasi = ?
-                       AND (p.nm_poli LIKE '%IGD%' OR p.nm_poli LIKE '%UGD%')",
-                    [$today]
-                );
-                $defaults['pasien_igd'] = (int) ($r?->jml ?? 0);
-
-                // Kamar terpakai (semua)
-                $r = DB::selectOne(
-                    "SELECT COUNT(*) AS jml FROM kamar_inap
-                     WHERE tgl_keluar IS NULL OR tgl_keluar = '0000-00-00'"
-                );
-                $defaults['kamar_terpakai'] = (int) ($r?->jml ?? 0);
+                    // Dokter aktif
+                    $r = DB::selectOne("SELECT COUNT(*) AS jml FROM dokter WHERE status = '1'");
+                    $defaults['total_dokter'] = (int) ($r?->jml ?? 0);
+                }
             }
         } catch (\Exception $e) {
-            // Return default jika DB error
+            // Keep default
         }
 
         return $defaults;
     }
 
     /**
-     * Pasien terbaru hari ini.
-     * Jika $kdDokter → hanya pasien dokter tsb.
-     * Jika null (admin) → semua pasien.
+     * Pasien terbaru disesuaikan portal aktif.
      */
-    private function getPasienTerbaru(?string $kdDokter = null): array
+    private function getPasienTerbaru(?string $kdDokter = null, string $activePortal = 'rajal'): array
     {
         try {
             $today  = now()->toDateString();
-            $params = [$today];
+            $params = [];
             $filter = '';
 
+            if ($activePortal === 'ranap') {
+                $filter .= "AND rp.status_lanjut = 'Ranap'";
+            } else {
+                $filter .= "AND (rp.status_lanjut = 'Ralan' OR pol.nm_poli LIKE '%IGD%' OR pol.nm_poli LIKE '%UGD%') AND rp.tgl_registrasi = ?";
+                $params[] = $today;
+            }
+
             if ($kdDokter !== null) {
-                $filter   = 'AND rp.kd_dokter = ?';
+                $filter   .= ' AND rp.kd_dokter = ?';
                 $params[] = $kdDokter;
             }
 
@@ -224,15 +222,14 @@ class DashboardController extends Controller
                             ELSE 'belum'
                         END AS status_layanan
                  FROM reg_periksa rp
-                 LEFT JOIN pasien p      ON rp.no_rkm_medis = p.no_rkm_medis
+                 LEFT JOIN pasien p       ON rp.no_rkm_medis = p.no_rkm_medis
                  LEFT JOIN poliklinik pol ON rp.kd_poli     = pol.kd_poli
                  LEFT JOIN dokter d       ON rp.kd_dokter   = d.kd_dokter
                  LEFT JOIN (
                      SELECT DISTINCT no_rawat FROM pemeriksaan_ralan
                  ) pr ON pr.no_rawat = rp.no_rawat
-                 WHERE rp.tgl_registrasi = ?
-                 {$filter}
-                 ORDER BY rp.jam_reg DESC
+                 WHERE 1=1 {$filter}
+                 ORDER BY rp.tgl_registrasi DESC, rp.jam_reg DESC
                  LIMIT 20",
                 $params
             ) ?: [];
@@ -242,15 +239,17 @@ class DashboardController extends Controller
     }
 
     /**
-     * Data kunjungan 7 hari terakhir untuk grafik.
-     * Jika $kdDokter → hanya pasien dokter tsb.
-     * Jika null (admin) → semua pasien RS.
+     * Data kunjungan 7 hari terakhir untuk grafik disesuaikan portal.
      */
-    private function getKunjunganMingguan(?string $kdDokter = null): array
+    private function getKunjunganMingguan(?string $kdDokter = null, string $activePortal = 'rajal'): array
     {
         $data = [];
         try {
-            $filter = $kdDokter !== null ? 'AND kd_dokter = ?' : '';
+            $portalFilter = ($activePortal === 'ranap')
+                ? " AND status_lanjut = 'Ranap'"
+                : " AND (status_lanjut = 'Ralan' OR kd_poli IN (SELECT kd_poli FROM poliklinik WHERE nm_poli LIKE '%IGD%'))";
+
+            $filter = $kdDokter !== null ? "{$portalFilter} AND kd_dokter = ?" : $portalFilter;
 
             for ($i = 6; $i >= 0; $i--) {
                 $tgl    = now()->subDays($i)->toDateString();

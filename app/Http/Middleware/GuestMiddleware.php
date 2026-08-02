@@ -14,7 +14,7 @@ class GuestMiddleware
     public function handle(Request $request, Closure $next): Response
     {
         if (session()->has('auth_user')) {
-            return redirect()->route('dashboard');
+            return redirect()->route('portal');
         }
         return $next($request);
     }

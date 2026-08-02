@@ -350,17 +350,17 @@
                 @endphp
                 <h4>{{ $namaDokter }}</h4>
                 <p>
-                    {{ $dokterInfo->spesialis ? $dokterInfo->spesialis : 'Dokter' }} · Selamat datang di Sistem Informasi Pasien RS Namira
+                    {{ $dokterInfo->spesialis ? $dokterInfo->spesialis : 'Dokter' }} · Selamat datang di Dashboard {{ $activePortal === 'ranap' ? 'Rawat Inap' : 'Rawat Jalan' }} & Penunjang RS Namira
                 </p>
             @else
                 <h4>{{ session('auth_user.nama', 'Admin') }}</h4>
-                <p>Selamat datang di Sistem Informasi Pasien RS Namira — Full Akses Admin.</p>
+                <p>Selamat datang di Dashboard {{ $activePortal === 'ranap' ? 'Rawat Inap' : 'Rawat Jalan' }} & Penunjang RS Namira.</p>
             @endif
         </div>
         <div class="text-end">
-            <div class="live-badge mb-2">
-                <span class="live-dot"></span>
-                @if($isDokter) DOKTER MODE @else ADMIN FULL ACCESS @endif
+            <div class="live-badge mb-2" style="{{ $activePortal === 'ranap' ? 'background:rgba(59,130,246,.2);border-color:rgba(59,130,246,.3);' : '' }}">
+                <span class="live-dot" style="{{ $activePortal === 'ranap' ? 'background:#60a5fa;' : '' }}"></span>
+                MODUL {{ $activePortal === 'ranap' ? 'RAWAT INAP' : 'RAWAT JALAN' }}
             </div>
             <div style="font-size:.8rem;color:rgba(255,255,255,.6);margin-top:.4rem;" id="liveClock"></div>
             <div style="font-size:.75rem;color:rgba(255,255,255,.45);">{{ now()->locale('id')->isoFormat('dddd, D MMMM YYYY') }}</div>
@@ -368,87 +368,84 @@
     </div>
 </div>
 
-@if($isDokter)
 <div class="row mb-3">
-    <div class="col-12">
+    <div class="col-12 d-flex justify-content-between align-items-center">
         <h5 class="fw-bold m-0" style="font-size: 1.05rem; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem;">
-            <i class="bi bi-journal-medical" style="color: var(--primary);"></i>
-            Data Kunjungan Saya
+            <i class="bi {{ $activePortal === 'ranap' ? 'bi-hospital' : 'bi-clipboard2-pulse-fill' }}" style="color: var(--primary);"></i>
+            Data &amp; Statistik {{ $activePortal === 'ranap' ? 'Rawat Inap' : 'Rawat Jalan' }}
         </h5>
+        <a href="{{ route('portal') }}" class="btn btn-sm btn-outline-success rounded-pill px-3 fw-semibold" style="font-size:.78rem;">
+            <i class="bi bi-door-open-fill me-1"></i> Ganti Portal Layanan
+        </a>
     </div>
 </div>
-@endif
 
 <div class="row g-3 mb-4">
-    <div class="col-12 col-sm-6 col-xl-2">
-        <div class="stat-card">
-            <div class="stat-icon blue"><i class="bi bi-people-fill"></i></div>
-            <div class="stat-info">
-                <div class="stat-label">Pasien Hari Ini</div>
-                <div class="stat-value" id="statTotal">{{ $stats['pasien_hari_ini'] }}</div>
-                <span class="stat-badge neutral"><i class="bi bi-calendar-check"></i> Hari ini</span>
+    @if($activePortal === 'ranap')
+        {{-- STAT CARDS RAWAT INAP ONLY --}}
+        <div class="col-12 col-sm-6 col-xl-4">
+            <div class="stat-card">
+                <div class="stat-icon purple"><i class="bi bi-hospital-fill"></i></div>
+                <div class="stat-info">
+                    <div class="stat-label">Pasien Dirawat Saat Ini</div>
+                    <div class="stat-value">{{ $stats['rawat_inap'] }}</div>
+                    <span class="stat-badge up"><i class="bi bi-person-check-fill"></i> Active Inpatient</span>
+                </div>
             </div>
         </div>
-    </div>
-    <div class="col-12 col-sm-6 col-xl-2">
-        <div class="stat-card">
-            <div class="stat-icon green"><i class="bi bi-clipboard2-pulse-fill"></i></div>
-            <div class="stat-info">
-                <div class="stat-label">Rawat Jalan</div>
-                <div class="stat-value">{{ $stats['rawat_jalan'] }}</div>
-                <span class="stat-badge up"><i class="bi bi-arrow-up-short"></i> Ralan</span>
+        <div class="col-12 col-sm-6 col-xl-4">
+            <div class="stat-card">
+                <div class="stat-icon teal"><i class="bi bi-door-open-fill"></i></div>
+                <div class="stat-info">
+                    <div class="stat-label">Bed / Kamar Terpakai</div>
+                    <div class="stat-value">{{ $stats['kamar_terpakai'] }}</div>
+                    <span class="stat-badge neutral"><i class="bi bi-house"></i> Bangsal</span>
+                </div>
             </div>
         </div>
-    </div>
-    <div class="col-12 col-sm-6 col-xl-2">
-        <div class="stat-card">
-            <div class="stat-icon purple"><i class="bi bi-hospital-fill"></i></div>
-            <div class="stat-info">
-                <div class="stat-label">Rawat Inap</div>
-                <div class="stat-value">{{ $stats['rawat_inap'] }}</div>
-                <span class="stat-badge neutral"><i class="bi bi-bed"></i> {{ $isDokter ? 'Registrasi' : 'Ranap' }}</span>
+        <div class="col-12 col-sm-6 col-xl-4">
+            <div class="stat-card">
+                <div class="stat-icon blue"><i class="bi bi-calendar-plus-fill"></i></div>
+                <div class="stat-info">
+                    <div class="stat-label">Ranap Masuk Hari Ini</div>
+                    <div class="stat-value">{{ $stats['pasien_hari_ini'] }}</div>
+                    <span class="stat-badge neutral"><i class="bi bi-clock"></i> Masuk Baru</span>
+                </div>
             </div>
         </div>
-    </div>
-    <div class="col-12 col-sm-6 col-xl-2">
-        <div class="stat-card">
-            <div class="stat-icon rose"><i class="bi bi-lightning-charge-fill"></i></div>
-            <div class="stat-info">
-                <div class="stat-label">Pasien IGD</div>
-                <div class="stat-value">{{ $stats['pasien_igd'] }}</div>
-                <span class="stat-badge neutral"><i class="bi bi-clock"></i> IGD</span>
+    @else
+        {{-- STAT CARDS RAWAT JALAN ONLY --}}
+        <div class="col-12 col-sm-6 col-xl-4">
+            <div class="stat-card">
+                <div class="stat-icon green"><i class="bi bi-clipboard2-pulse-fill"></i></div>
+                <div class="stat-info">
+                    <div class="stat-label">Pasien Rawat Jalan Hari Ini</div>
+                    <div class="stat-value">{{ $stats['rawat_jalan'] }}</div>
+                    <span class="stat-badge up"><i class="bi bi-arrow-up-short"></i> Poliklinik</span>
+                </div>
             </div>
         </div>
-    </div>
-    <div class="col-12 col-sm-6 col-xl-2">
-        <div class="stat-card">
-            @if($isDokter)
-            <div class="stat-icon green"><i class="bi bi-check-circle-fill"></i></div>
-            <div class="stat-info">
-                <div class="stat-label">Terlayani Hari Ini</div>
-                <div class="stat-value">{{ $stats['total_dokter'] }}</div>
-                <span class="stat-badge up"><i class="bi bi-check2-all"></i> Selesai</span>
-            </div>
-            @else
-            <div class="stat-icon amber"><i class="bi bi-person-badge-fill"></i></div>
-            <div class="stat-info">
-                <div class="stat-label">Dokter Aktif</div>
-                <div class="stat-value">{{ $stats['total_dokter'] }}</div>
-                <span class="stat-badge up"><i class="bi bi-check-circle"></i> Aktif</span>
-            </div>
-            @endif
-        </div>
-    </div>
-    <div class="col-12 col-sm-6 col-xl-2">
-        <div class="stat-card">
-            <div class="stat-icon teal"><i class="bi bi-door-open-fill"></i></div>
-            <div class="stat-info">
-                <div class="stat-label">{{ $isDokter ? 'Kamar Pasien' : 'Kamar Terisi' }}</div>
-                <div class="stat-value">{{ $stats['kamar_terpakai'] }}</div>
-                <span class="stat-badge neutral"><i class="bi bi-house"></i> Bed</span>
+        <div class="col-12 col-sm-6 col-xl-4">
+            <div class="stat-card">
+                <div class="stat-icon rose"><i class="bi bi-lightning-charge-fill"></i></div>
+                <div class="stat-info">
+                    <div class="stat-label">Pasien IGD / UGD</div>
+                    <div class="stat-value">{{ $stats['pasien_igd'] }}</div>
+                    <span class="stat-badge neutral"><i class="bi bi-clock"></i> Darurat</span>
+                </div>
             </div>
         </div>
-    </div>
+        <div class="col-12 col-sm-6 col-xl-4">
+            <div class="stat-card">
+                <div class="stat-icon blue"><i class="bi bi-check-circle-fill"></i></div>
+                <div class="stat-info">
+                    <div class="stat-label">Pasien Terlayani (RME)</div>
+                    <div class="stat-value">{{ $stats['total_dokter'] }}</div>
+                    <span class="stat-badge up"><i class="bi bi-check2-all"></i> Selesai</span>
+                </div>
+            </div>
+        </div>
+    @endif
 </div>
 
 {{-- ===========================
@@ -655,76 +652,80 @@
             </div>
             <div class="p-3">
                 <div class="row g-2">
-                    @if(session('auth_user.is_admin') || session('auth_user.akses.registrasi'))
-                    <div class="col-6">
-                        <a href="#" class="quick-btn blue">
-                            <div class="qb-icon"><i class="bi bi-person-plus-fill"></i></div>
-                            Daftar Pasien
-                        </a>
-                    </div>
-                    @endif
-
-                    @if(session('auth_user.is_admin') || session('auth_user.akses.kasir_ralan') || session('auth_user.akses.billing_ralan'))
-                    <div class="col-6">
-                        <a href="#" class="quick-btn green">
-                            <div class="qb-icon"><i class="bi bi-receipt-cutoff"></i></div>
-                            Kasir Ralan
-                        </a>
-                    </div>
-                    @endif
-
-                    @if(session('auth_user.is_admin') || session('auth_user.akses.kamar_inap') || session('auth_user.akses.billing_ranap'))
-                    <div class="col-6">
-                        <a href="#" class="quick-btn purple">
-                            <div class="qb-icon"><i class="bi bi-hospital"></i></div>
-                            Kamar Inap
-                        </a>
-                    </div>
-                    @endif
-
-                    @if(session('auth_user.is_admin') || session('auth_user.akses.igd'))
-                    <div class="col-6">
-                        <a href="#" class="quick-btn rose">
-                            <div class="qb-icon"><i class="bi bi-lightning-fill"></i></div>
-                            IGD
-                        </a>
-                    </div>
-                    @endif
-
-                    @if(session('auth_user.is_admin') || session('auth_user.akses.permintaan_lab') || session('auth_user.akses.periksa_lab'))
-                    <div class="col-6">
-                        <a href="#" class="quick-btn teal">
-                            <div class="qb-icon"><i class="bi bi-eyedropper"></i></div>
-                            Laboratorium
-                        </a>
-                    </div>
-                    @endif
-
-                    @if(session('auth_user.is_admin') || session('auth_user.akses.permintaan_radiologi'))
-                    <div class="col-6">
-                        <a href="#" class="quick-btn amber">
-                            <div class="qb-icon"><i class="bi bi-camera-fill"></i></div>
-                            Radiologi
-                        </a>
-                    </div>
-                    @endif
-
-                    @if(session('auth_user.is_admin') || session('auth_user.akses.resep_obat') || session('auth_user.akses.penjualan_obat'))
-                    <div class="col-6">
-                        <a href="#" class="quick-btn cyan">
-                            <div class="qb-icon"><i class="bi bi-capsule-pill"></i></div>
-                            Apotek
-                        </a>
-                    </div>
-                    @endif
-
-                    @if(session('auth_user.is_admin') || session('auth_user.akses.laporan'))
-                    <div class="col-6">
-                        <a href="#" class="quick-btn slate">
-                            <div class="qb-icon"><i class="bi bi-file-earmark-bar-graph"></i></div>
-                            Laporan
-                        </a>
-                    </div>
+                    @if($activePortal === 'ranap')
+                        <div class="col-6">
+                            <a href="{{ route('rawat-inap') }}" class="quick-btn purple">
+                                <div class="qb-icon"><i class="bi bi-hospital"></i></div>
+                                Kamar Inap
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="{{ route('rawat-inap') }}" class="quick-btn blue">
+                                <div class="qb-icon"><i class="bi bi-building"></i></div>
+                                Bangsal Ranap
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="#" class="quick-btn teal">
+                                <div class="qb-icon"><i class="bi bi-eyedropper"></i></div>
+                                Lab Ranap
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="#" class="quick-btn amber">
+                                <div class="qb-icon"><i class="bi bi-camera-fill"></i></div>
+                                Radiologi Ranap
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="#" class="quick-btn cyan">
+                                <div class="qb-icon"><i class="bi bi-capsule-pill"></i></div>
+                                Depo Inap
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="#" class="quick-btn green">
+                                <div class="qb-icon"><i class="bi bi-file-earmark-medical-fill"></i></div>
+                                RME Ranap
+                            </a>
+                        </div>
+                    @else
+                        <div class="col-6">
+                            <a href="{{ route('rawat-jalan') }}" class="quick-btn green">
+                                <div class="qb-icon"><i class="bi bi-clipboard2-pulse-fill"></i></div>
+                                Poliklinik Ralan
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="{{ route('rawat-jalan') }}" class="quick-btn rose">
+                                <div class="qb-icon"><i class="bi bi-lightning-fill"></i></div>
+                                IGD / UGD
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="#" class="quick-btn teal">
+                                <div class="qb-icon"><i class="bi bi-eyedropper"></i></div>
+                                Lab Ralan
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="#" class="quick-btn amber">
+                                <div class="qb-icon"><i class="bi bi-camera-fill"></i></div>
+                                Radiologi Ralan
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="#" class="quick-btn cyan">
+                                <div class="qb-icon"><i class="bi bi-capsule-pill"></i></div>
+                                Apotek Ralan
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="#" class="quick-btn blue">
+                                <div class="qb-icon"><i class="bi bi-file-earmark-medical-fill"></i></div>
+                                RME Ralan
+                            </a>
+                        </div>
                     @endif
                 </div>
             </div>

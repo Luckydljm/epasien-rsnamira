@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\PortalController;
 use App\Http\Controllers\RajalController;
 use App\Http\Controllers\RanapController;
 use Illuminate\Support\Facades\Route;
@@ -24,7 +25,9 @@ Route::post('/logout', [LoginController::class, 'logout'])
 
 // === PROTECTED ROUTES (butuh login) ===
 Route::middleware('auth.check')->group(function () {
-    Route::get('/', fn () => redirect()->route('dashboard'));
+    Route::get('/', fn () => redirect()->route('portal'));
+    Route::get('/portal', [PortalController::class, 'index'])->name('portal');
+    Route::get('/portal/select/{mode}', [PortalController::class, 'selectMode'])->name('portal.select');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     // Layanan
