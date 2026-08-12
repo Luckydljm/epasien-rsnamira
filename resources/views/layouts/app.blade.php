@@ -673,7 +673,7 @@
             <a href="{{ route('rawat-jalan') }}"
                class="nav-item-link {{ request()->routeIs('rawat-jalan*') ? 'active' : '' }}">
                 <i class="bi bi-clipboard2-pulse-fill nav-icon"></i>
-                <span>Rawat Jalan & Poliklinik</span>
+                <span>Rawat Jalan</span>
                 @if(($sidebarCounts['rajal'] ?? 0) > 0)
                 <span class="sidebar-count ralan {{ ($sidebarCounts['rajal'] ?? 0) >= 10 ? 'pulse' : '' }}">
                     {{ $sidebarCounts['rajal'] }}
