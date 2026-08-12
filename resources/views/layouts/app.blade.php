@@ -653,77 +653,19 @@
                 </span>
                 @endif
             </a>
-
-            <div class="nav-section-label">Penunjang Rawat Inap</div>
-            <a href="#" class="nav-item-link">
-                <i class="bi bi-eyedropper nav-icon"></i>
-                Lab Rawat Inap
-            </a>
-            <a href="#" class="nav-item-link">
-                <i class="bi bi-camera nav-icon"></i>
-                Radiologi Rawat Inap
-            </a>
-            <a href="#" class="nav-item-link">
-                <i class="bi bi-capsule nav-icon"></i>
-                Apotek / Depo Inap
-            </a>
         @else
             {{-- MODUL RAWAT JALAN ONLY (DEFAULT) --}}
             <div class="nav-section-label">Pelayanan Rawat Jalan</div>
             <a href="{{ route('rawat-jalan') }}"
                class="nav-item-link {{ request()->routeIs('rawat-jalan*') ? 'active' : '' }}">
                 <i class="bi bi-clipboard2-pulse-fill nav-icon"></i>
-                <span>Rawat Jalan</span>
+                <span>Rawat Jalan &amp; Pelayanan Dokter</span>
                 @if(($sidebarCounts['rajal'] ?? 0) > 0)
                 <span class="sidebar-count ralan {{ ($sidebarCounts['rajal'] ?? 0) >= 10 ? 'pulse' : '' }}">
                     {{ $sidebarCounts['rajal'] }}
                 </span>
                 @endif
             </a>
-
-            <div class="nav-section-label">Penunjang Rawat Jalan</div>
-            <a href="#" class="nav-item-link">
-                <i class="bi bi-eyedropper nav-icon"></i>
-                Lab Rawat Jalan
-            </a>
-            <a href="#" class="nav-item-link">
-                <i class="bi bi-camera nav-icon"></i>
-                Radiologi Rawat Jalan
-            </a>
-            <a href="#" class="nav-item-link">
-                <i class="bi bi-capsule nav-icon"></i>
-                Apotek / Farmasi Ralan
-            </a>
-        @endif
-
-        <div class="nav-section-label">Master Data</div>
-        <a href="#" class="nav-item-link">
-            <i class="bi bi-people-fill nav-icon"></i>
-            Data Pasien
-        </a>
-        <a href="#" class="nav-item-link">
-            <i class="bi bi-person-badge-fill nav-icon"></i>
-            Data Dokter
-        </a>
-        <a href="#" class="nav-item-link">
-            <i class="bi bi-building nav-icon"></i>
-            Data Pegawai
-        </a>
-
-        @if(session('auth_user.is_admin') || session('auth_user.akses.admin'))
-        <div class="nav-section-label">Administrasi</div>
-        <a href="#" class="nav-item-link">
-            <i class="bi bi-people nav-icon"></i>
-            Manajemen User
-        </a>
-        <a href="#" class="nav-item-link">
-            <i class="bi bi-shield-check nav-icon"></i>
-            Hak Akses
-        </a>
-        <a href="#" class="nav-item-link">
-            <i class="bi bi-gear-fill nav-icon"></i>
-            Pengaturan Sistem
-        </a>
         @endif
 
     </nav>
