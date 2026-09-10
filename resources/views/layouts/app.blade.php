@@ -321,9 +321,24 @@
             font-weight: 700;
             letter-spacing: 1.2px;
             text-transform: uppercase;
-            color: rgba(255,255,255,.28);
-            padding: 1rem 1.4rem .3rem;
+            color: rgba(255,255,255,.35);
+            padding: .9rem 1.4rem .3rem;
+            display: flex;
+            align-items: center;
+            gap: .35rem;
         }
+        .nav-section-label.rajal-label {
+            color: #6ee7b7;
+        }
+        .nav-section-label.ranap-label {
+            color: #93c5fd;
+        }
+        .nav-section-divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,.12), transparent);
+            margin: .65rem 1.2rem .2rem;
+        }
+
 
         .nav-item-link {
             display: flex;
@@ -625,7 +640,10 @@
     {{-- Navigation --}}
     <nav class="sidebar-nav">
 
-        <div class="nav-section-label">Utama</div>
+        {{-- ── Section: Utama ── --}}
+        <div class="nav-section-label">
+            <i class="bi bi-grid-fill"></i> Utama
+        </div>
         <a href="{{ route('portal') }}"
            class="nav-item-link {{ request()->routeIs('portal') ? 'active' : '' }}">
             <i class="bi bi-door-open-fill nav-icon"></i>
@@ -636,39 +654,55 @@
         </a>
         <a href="{{ route('dashboard') }}"
            class="nav-item-link {{ request()->routeIs('dashboard') ? 'active' : '' }}">
-            <i class="bi bi-grid-1x2-fill nav-icon"></i>
+            <i class="bi bi-speedometer2 nav-icon"></i>
             <span>Dashboard {{ session('active_portal') === 'ranap' ? 'Rawat Inap' : 'Rawat Jalan' }}</span>
         </a>
 
-        @if(session('active_portal') === 'ranap')
-            {{-- MODUL RAWAT INAP ONLY --}}
-            <div class="nav-section-label">Pelayanan Rawat Inap</div>
-            <a href="{{ route('rawat-inap') }}"
-               class="nav-item-link {{ request()->routeIs('rawat-inap*') ? 'active' : '' }}">
-                <i class="bi bi-hospital nav-icon"></i>
-                <span>Rawat Inap & Bangsal</span>
-                @if(($sidebarCounts['ranap'] ?? 0) > 0)
-                <span class="sidebar-count ranap">
-                    {{ $sidebarCounts['ranap'] }}
-                </span>
-                @endif
-            </a>
-        @else
-            {{-- MODUL RAWAT JALAN ONLY (DEFAULT) --}}
-            <div class="nav-section-label">Pelayanan Rawat Jalan</div>
-            <a href="{{ route('rawat-jalan') }}"
-               class="nav-item-link {{ request()->routeIs('rawat-jalan*') ? 'active' : '' }}">
-                <i class="bi bi-clipboard2-pulse-fill nav-icon"></i>
-                <span>Rawat Jalan &amp; Pelayanan Dokter</span>
-                @if(($sidebarCounts['rajal'] ?? 0) > 0)
-                <span class="sidebar-count ralan {{ ($sidebarCounts['rajal'] ?? 0) >= 10 ? 'pulse' : '' }}">
-                    {{ $sidebarCounts['rajal'] }}
-                </span>
-                @endif
-            </a>
-        @endif
+        {{-- ── SEPARASI: RAWAT JALAN ── --}}
+        <div class="nav-section-divider"></div>
+        <div class="nav-section-label rajal-label">
+            <i class="bi bi-clipboard2-pulse-fill"></i> Rawat Jalan (Rajal)
+        </div>
+        <a href="{{ route('rawat-jalan') }}"
+           class="nav-item-link {{ request()->routeIs('rawat-jalan*') ? 'active' : '' }}">
+            <i class="bi bi-person-walking nav-icon" style="color:#6ee7b7;"></i>
+            <span>Pasien Rawat Jalan</span>
+            @if(($sidebarCounts['rajal'] ?? 0) > 0)
+            <span class="sidebar-count ralan {{ ($sidebarCounts['rajal'] ?? 0) >= 10 ? 'pulse' : '' }}">
+                {{ $sidebarCounts['rajal'] }}
+            </span>
+            @endif
+        </a>
+
+        {{-- ── SEPARASI: RAWAT INAP ── --}}
+        <div class="nav-section-divider"></div>
+        <div class="nav-section-label ranap-label">
+            <i class="bi bi-hospital"></i> Rawat Inap (Ranap)
+        </div>
+        <a href="{{ route('rawat-inap') }}"
+           class="nav-item-link {{ request()->routeIs('rawat-inap*') ? 'active' : '' }}">
+            <i class="bi bi-hospital nav-icon" style="color:#93c5fd;"></i>
+            <span>Pasien Sedang Dirawat</span>
+            @if(($sidebarCounts['ranap'] ?? 0) > 0)
+            <span class="sidebar-count ranap">
+                {{ $sidebarCounts['ranap'] }}
+            </span>
+            @endif
+        </a>
+        <a href="{{ route('rawat-inap') }}#tabSelesai"
+           class="nav-item-link"
+           onclick="if(window.location.pathname.includes('rawat-inap')){ var t = document.querySelector('[data-bs-target=\'#tabSelesai\']'); if(t){ var b = new bootstrap.Tab(t); b.show(); } }">
+            <i class="bi bi-door-closed nav-icon" style="color:#cbd5e1;"></i>
+            <span>Pasien Pulang / Selesai</span>
+            @if(($sidebarCounts['ranapSelesai'] ?? 0) > 0)
+            <span class="sidebar-count" style="background:rgba(148,163,184,.2); color:#cbd5e1;">
+                {{ $sidebarCounts['ranapSelesai'] }}
+            </span>
+            @endif
+        </a>
 
     </nav>
+
 
     {{-- Logout --}}
     <div class="sidebar-footer">
@@ -799,11 +833,37 @@
 <!-- jQuery & DataTables JS -->
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
 <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
 <script src="https://cdn.datatables.net/responsive/2.5.0/js/responsive.bootstrap5.min.js"></script>
 <script>
+    // Global SweetAlert2 Toast & Alert Helpers
+    window.SwalToast = Swal.mixin({
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 3000,
+        timerProgressBar: true,
+        didOpen: (toast) => {
+            toast.addEventListener('mouseenter', Swal.stopTimer);
+            toast.addEventListener('mouseleave', Swal.resumeTimer);
+        }
+    });
+
+    window.notifySuccess = function(msg) {
+        SwalToast.fire({ icon: 'success', title: msg });
+    };
+
+    window.notifyError = function(msg) {
+        SwalToast.fire({ icon: 'error', title: msg });
+    };
+
+    window.notifyWarning = function(msg) {
+        SwalToast.fire({ icon: 'warning', title: msg });
+    };
+
     // Config Default DataTables Bahasa Indonesia
     if (window.jQuery && $.fn.dataTable) {
         $.extend(true, $.fn.dataTable.defaults, {

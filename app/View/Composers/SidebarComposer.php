@@ -29,10 +29,12 @@ class SidebarComposer
         $kdDokter = (!$isAdmin && $isDokter) ? $kodeUser : null;
 
         $view->with('sidebarCounts', [
-            'rajal' => $this->countRajal($kdDokter),
-            'ranap' => $this->countRanap($kdDokter),
+            'rajal'        => $this->countRajal($kdDokter),
+            'ranap'        => $this->countRanap($kdDokter),
+            'ranapSelesai' => $this->countRanapSelesai($kdDokter),
         ]);
     }
+
 
     /**
      * Hitung pasien rawat jalan + IGD hari ini (yang aktif).
@@ -100,4 +102,36 @@ class SidebarComposer
             return 0;
         }
     }
+
+    /**
+     * Hitung pasien rawat inap yang SUDAH PULANG / SELESAI.
+     */
+    private function countRanapSelesai(?string $kdDokter): int
+    {
+        try {
+            $params = [];
+            $filter = '';
+
+            if ($kdDokter !== null) {
+                $filter   = 'AND rp.kd_dokter = ?';
+                $params[] = $kdDokter;
+            }
+
+            $row = DB::selectOne(
+                "SELECT COUNT(DISTINCT ki.no_rawat) AS jml
+                 FROM kamar_inap ki
+                 INNER JOIN reg_periksa rp ON rp.no_rawat = ki.no_rawat
+                 WHERE ki.tgl_keluar IS NOT NULL
+                   AND ki.tgl_keluar != '0000-00-00'
+                   AND ki.stts_pulang != '-'
+                 {$filter}",
+                $params
+            );
+
+            return (int) ($row?->jml ?? 0);
+        } catch (\Exception $e) {
+            return 0;
+        }
+    }
 }
+
