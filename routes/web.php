@@ -34,10 +34,13 @@ Route::middleware('auth.check')->group(function () {
     // RAWAT JALAN
     // ===================================================================
     Route::get('/rawat-jalan', [RajalController::class, 'index'])->name('rawat-jalan');
-    Route::get('/rawat-jalan/pasien-detail/{no_rawat}', [RajalController::class, 'getPasienDetail'])->name('rawat-jalan.pasien-detail');
+    Route::get('/rawat-jalan/pasien-detail/{no_rawat?}', [RajalController::class, 'getPasienDetail'])
+        ->where('no_rawat', '.*')
+        ->name('rawat-jalan.pasien-detail');
 
     // SOAP Rajal
     Route::post('/rawat-jalan/simpan-soap', [RajalController::class, 'simpanSoap'])->name('rawat-jalan.simpan-soap');
+    Route::delete('/rawat-jalan/hapus-soap', [RajalController::class, 'hapusSoap'])->name('rawat-jalan.hapus-soap');
 
     // Awal Medis Rajal
     Route::post('/rawat-jalan/simpan-awal-medis', [RajalController::class, 'simpanAwalMedis'])->name('rawat-jalan.simpan-awal-medis');
@@ -56,15 +59,25 @@ Route::middleware('auth.check')->group(function () {
     Route::post('/rawat-jalan/simpan-resep', [RajalController::class, 'simpanResep'])->name('rawat-jalan.simpan-resep');
     Route::delete('/rawat-jalan/hapus-resep', [RajalController::class, 'hapusResep'])->name('rawat-jalan.hapus-resep');
 
-    // Jadwal Operasi & Master Dokter Rajal
+    // Jadwal Operasi, Laporan Operasi & Master OK Rajal
     Route::get('/rawat-jalan/master-operasi', [RajalController::class, 'masterOperasi'])->name('rawat-jalan.master-operasi');
     Route::get('/rawat-jalan/master-dokter', [RajalController::class, 'masterDokter'])->name('rawat-jalan.master-dokter');
+    Route::get('/rawat-jalan/master-ruang-ok', [RajalController::class, 'masterRuangOk'])->name('rawat-jalan.master-ruang-ok');
+    Route::get('/rawat-jalan/master-template-laporan-operasi', [RajalController::class, 'masterTemplateLaporanOperasi'])->name('rawat-jalan.master-template-laporan-operasi');
     Route::post('/rawat-jalan/simpan-booking-operasi', [RajalController::class, 'simpanBookingOperasi'])->name('rawat-jalan.simpan-booking-operasi');
+    Route::delete('/rawat-jalan/hapus-booking-operasi', [RajalController::class, 'hapusBookingOperasi'])->name('rawat-jalan.hapus-booking-operasi');
+    Route::post('/rawat-jalan/simpan-laporan-operasi', [RajalController::class, 'simpanLaporanOperasi'])->name('rawat-jalan.simpan-laporan-operasi');
+    Route::delete('/rawat-jalan/hapus-laporan-operasi', [RajalController::class, 'hapusLaporanOperasi'])->name('rawat-jalan.hapus-laporan-operasi');
+    Route::get('/rawat-jalan/cetak-laporan-operasi/{no_rawat?}', [RajalController::class, 'cetakLaporanOperasi'])->name('rawat-jalan.cetak-laporan-operasi');
+    Route::get('/rawat-jalan/cetak-booking-operasi/{no_rawat?}', [RajalController::class, 'cetakBookingOperasi'])->name('rawat-jalan.cetak-booking-operasi');
 
-    // Diagnosa Rajal (ICD-10)
+    // Diagnosa & Prosedur Rajal (ICD-10 & ICD-9-CM)
     Route::get('/rawat-jalan/master-diagnosa', [RajalController::class, 'masterDiagnosa'])->name('rawat-jalan.master-diagnosa');
     Route::post('/rawat-jalan/simpan-diagnosa', [RajalController::class, 'simpanDiagnosa'])->name('rawat-jalan.simpan-diagnosa');
     Route::delete('/rawat-jalan/hapus-diagnosa', [RajalController::class, 'hapusDiagnosa'])->name('rawat-jalan.hapus-diagnosa');
+    Route::get('/rawat-jalan/master-prosedur', [RajalController::class, 'masterProsedur'])->name('rawat-jalan.master-prosedur');
+    Route::post('/rawat-jalan/simpan-prosedur', [RajalController::class, 'simpanProsedur'])->name('rawat-jalan.simpan-prosedur');
+    Route::delete('/rawat-jalan/hapus-prosedur', [RajalController::class, 'hapusProsedur'])->name('rawat-jalan.hapus-prosedur');
 
     // Tindakan Rajal
     Route::get('/rawat-jalan/master-tindakan', [RajalController::class, 'masterTindakan'])->name('rawat-jalan.master-tindakan');
@@ -83,10 +96,13 @@ Route::middleware('auth.check')->group(function () {
     Route::get('/rawat-inap', [RanapController::class, 'index'])->name('rawat-inap');
 
     // Detail pasien ranap (JSON)
-    Route::get('/rawat-inap/pasien-detail/{no_rawat}', [RanapController::class, 'getPasienDetail'])->name('rawat-inap.pasien-detail');
+    Route::get('/rawat-inap/pasien-detail/{no_rawat?}', [RanapController::class, 'getPasienDetail'])
+        ->where('no_rawat', '.*')
+        ->name('rawat-inap.pasien-detail');
 
     // SOAP / Catatan Perkembangan Harian Ranap
     Route::post('/rawat-inap/simpan-soap', [RanapController::class, 'simpanSoapRanap'])->name('rawat-inap.simpan-soap');
+    Route::delete('/rawat-inap/hapus-soap', [RanapController::class, 'hapusSoapRanap'])->name('rawat-inap.hapus-soap');
 
     // Diagnosa ICD-10
     Route::get('/rawat-inap/master-diagnosa', [RanapController::class, 'masterDiagnosa'])->name('rawat-inap.master-diagnosa');
@@ -114,6 +130,18 @@ Route::middleware('auth.check')->group(function () {
     // Radiologi Ranap
     Route::get('/rawat-inap/master-radiologi', [RanapController::class, 'masterRadiologiRanap'])->name('rawat-inap.master-radiologi');
     Route::post('/rawat-inap/simpan-radiologi', [RanapController::class, 'simpanRadiologiRanap'])->name('rawat-inap.simpan-radiologi');
+
+    // Operasi (Jadwal & Laporan Operasi) Ranap
+    Route::get('/rawat-inap/master-operasi', [RanapController::class, 'masterOperasi'])->name('rawat-inap.master-operasi');
+    Route::get('/rawat-inap/master-dokter', [RanapController::class, 'masterDokter'])->name('rawat-inap.master-dokter');
+    Route::get('/rawat-inap/master-ruang-ok', [RanapController::class, 'masterRuangOk'])->name('rawat-inap.master-ruang-ok');
+    Route::get('/rawat-inap/master-template-laporan-operasi', [RanapController::class, 'masterTemplateLaporanOperasi'])->name('rawat-inap.master-template-laporan-operasi');
+    Route::post('/rawat-inap/simpan-booking-operasi', [RanapController::class, 'simpanBookingOperasi'])->name('rawat-inap.simpan-booking-operasi');
+    Route::delete('/rawat-inap/hapus-booking-operasi', [RanapController::class, 'hapusBookingOperasi'])->name('rawat-inap.hapus-booking-operasi');
+    Route::post('/rawat-inap/simpan-laporan-operasi', [RanapController::class, 'simpanLaporanOperasi'])->name('rawat-inap.simpan-laporan-operasi');
+    Route::delete('/rawat-inap/hapus-laporan-operasi', [RanapController::class, 'hapusLaporanOperasi'])->name('rawat-inap.hapus-laporan-operasi');
+    Route::get('/rawat-inap/cetak-laporan-operasi/{no_rawat?}', [RanapController::class, 'cetakLaporanOperasi'])->name('rawat-inap.cetak-laporan-operasi');
+    Route::get('/rawat-inap/cetak-booking-operasi/{no_rawat?}', [RanapController::class, 'cetakBookingOperasi'])->name('rawat-inap.cetak-booking-operasi');
 
     // Resume Medis Ranap
     Route::post('/rawat-inap/simpan-resume', [RanapController::class, 'simpanResumeRanap'])->name('rawat-inap.simpan-resume');

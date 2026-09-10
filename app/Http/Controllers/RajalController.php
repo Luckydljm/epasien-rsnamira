@@ -45,12 +45,23 @@ class RajalController extends Controller
     /**
      * Ambil detail pasien & data rekam medis aktif untuk Offcanvas Dokter
      */
-    public function getPasienDetail(Request $request, $no_rawat_b64)
+    public function getPasienDetail(Request $request, $no_rawat_b64 = null)
     {
         try {
-            $noRawat = base64_decode($no_rawat_b64);
-            if (!str_contains($noRawat, '/')) {
-                $noRawat = urldecode($no_rawat_b64);
+            $raw = $no_rawat_b64 ?: $request->input('no_rawat') ?: $request->input('no_rawat_b64');
+            if (empty($raw)) {
+                return response()->json(['success' => false, 'message' => 'No. Rawat tidak valid.'], 400);
+            }
+
+            if (strpos($raw, '/') !== false && strlen($raw) >= 14) {
+                $noRawat = $raw;
+            } else {
+                $decoded = base64_decode(strtr($raw, '-_', '+/'), true);
+                if ($decoded && strpos($decoded, '/') !== false) {
+                    $noRawat = $decoded;
+                } else {
+                    $noRawat = urldecode($raw);
+                }
             }
 
             // Pasien demography & reg_periksa
@@ -72,61 +83,303 @@ class RajalController extends Controller
                 return response()->json(['success' => false, 'message' => 'Data pasien tidak ditemukan.'], 404);
             }
 
-            // 1. Data SOAP (pemeriksaan_ralan) berdasarkan no_rawat
+            $noRkmMedis = $pasien->no_rkm_medis;
+
+            // 1. Data SOAP (pemeriksaan_ralan & pemeriksaan_ranap) berdasarkan no_rkm_medis pasien
             $soapList = DB::select(
-                "SELECT pr.*, rp.tgl_registrasi, d.nm_dokter
+                "SELECT pr.no_rawat, pr.tgl_perawatan, pr.jam_rawat,
+                        pr.suhu_tubuh, pr.tensi, pr.nadi, pr.respirasi,
+                        pr.tinggi, pr.berat, pr.spo2, pr.gcs, pr.kesadaran,
+                        pr.keluhan, pr.pemeriksaan, pr.penilaian, pr.rtl,
+                        pr.instruksi, pr.evaluasi, pr.alergi, pr.lingkar_perut,
+                        rp.tgl_registrasi, COALESCE(d.nm_dokter, pt.nama, pr.nip) AS petugas,
+                        COALESCE(d.nm_dokter, pt.nama, pr.nip) AS nm_dokter,
+                        pol.nm_poli, 'Ralan' AS jenis_rawat,
+                        IF(pr.no_rawat = ?, 1, 0) AS is_current
                  FROM pemeriksaan_ralan pr
                  JOIN reg_periksa rp ON pr.no_rawat = rp.no_rawat
+                 LEFT JOIN poliklinik pol ON rp.kd_poli = pol.kd_poli
                  LEFT JOIN dokter d ON rp.kd_dokter = d.kd_dokter
-                 WHERE pr.no_rawat = ?
-                 ORDER BY pr.tgl_perawatan DESC, pr.jam_rawat DESC
-                 LIMIT 50",
-                [$noRawat]
+                 LEFT JOIN petugas pt ON pr.nip = pt.nip
+                 WHERE rp.no_rkm_medis = ?
+
+                 UNION ALL
+
+                 SELECT prn.no_rawat, prn.tgl_perawatan, prn.jam_rawat,
+                        prn.suhu_tubuh, prn.tensi, prn.nadi, prn.respirasi,
+                        prn.tinggi, prn.berat, prn.spo2, prn.gcs, prn.kesadaran,
+                        prn.keluhan, prn.pemeriksaan, prn.penilaian, prn.rtl,
+                        prn.instruksi, prn.evaluasi, prn.alergi, '' AS lingkar_perut,
+                        rp2.tgl_registrasi, COALESCE(d2.nm_dokter, pt2.nama, prn.nip) AS petugas,
+                        COALESCE(d2.nm_dokter, pt2.nama, prn.nip) AS nm_dokter,
+                        'Rawat Inap' AS nm_poli, 'Ranap' AS jenis_rawat,
+                        IF(prn.no_rawat = ?, 1, 0) AS is_current
+                 FROM pemeriksaan_ranap prn
+                 JOIN reg_periksa rp2 ON prn.no_rawat = rp2.no_rawat
+                 LEFT JOIN dokter d2 ON rp2.kd_dokter = d2.kd_dokter
+                 LEFT JOIN petugas pt2 ON prn.nip = pt2.nip
+                 WHERE rp2.no_rkm_medis = ?
+
+                 ORDER BY tgl_perawatan DESC, jam_rawat DESC
+                 LIMIT 100",
+                [$noRawat, $noRkmMedis, $noRawat, $noRkmMedis]
             );
 
-            // 2. Data Awal Medis berdasarkan no_rawat
+            // 2. Data Awal Medis berdasarkan no_rkm_medis (Semua Poli Spesialis, IGD, dan Ranap)
             $awalMedisList = DB::select(
-                "SELECT pmr.no_rawat, pmr.tanggal, pmr.kd_dokter, d.nm_dokter, pmr.anamnesis, pmr.keluhan_utama, pmr.rps, pmr.rpd, pmr.diagnosis, pmr.tata, 'Medis Ralan General' AS departemen
+                "SELECT pmr.no_rawat, pmr.tanggal, pmr.kd_dokter, d.nm_dokter, pmr.anamnesis, pmr.keluhan_utama, pmr.rps, pmr.rpd, pmr.rpk, pmr.rpo, pmr.alergi, pmr.diagnosis, pmr.tata, 'Medis Ralan Umum' AS departemen, IF(pmr.no_rawat = ?, 1, 0) AS is_current
                  FROM penilaian_medis_ralan pmr
                  JOIN reg_periksa rp ON pmr.no_rawat = rp.no_rawat
                  LEFT JOIN dokter d ON pmr.kd_dokter = d.kd_dokter
-                 WHERE pmr.no_rawat = ?
+                 WHERE rp.no_rkm_medis = ?
 
                  UNION ALL
 
-                 SELECT pd.no_rawat, pd.tanggal, pd.kd_dokter, d.nm_dokter, pd.anamnesis, pd.keluhan_utama, pd.rps, pd.rpd, pd.diagnosis, pd.terapi AS tata, 'Medis Penyakit Dalam' AS departemen
+                 SELECT pd.no_rawat, pd.tanggal, pd.kd_dokter, d.nm_dokter, pd.anamnesis, pd.keluhan_utama, pd.rps, pd.rpd, '' AS rpk, pd.rpo, pd.alergi, pd.diagnosis, pd.terapi AS tata, 'Poli Penyakit Dalam' AS departemen, IF(pd.no_rawat = ?, 1, 0) AS is_current
                  FROM penilaian_medis_ralan_penyakit_dalam pd
                  JOIN reg_periksa rp ON pd.no_rawat = rp.no_rawat
                  LEFT JOIN dokter d ON pd.kd_dokter = d.kd_dokter
-                 WHERE pd.no_rawat = ?
+                 WHERE rp.no_rkm_medis = ?
 
                  UNION ALL
 
-                 SELECT igd.no_rawat, igd.tanggal, igd.kd_dokter, d.nm_dokter, igd.anamnesis, igd.keluhan_utama, igd.rps, igd.rpd, igd.diagnosis, igd.tata, 'Medis IGD' AS departemen
+                 SELECT igd.no_rawat, igd.tanggal, igd.kd_dokter, d.nm_dokter, igd.anamnesis, igd.keluhan_utama, igd.rps, igd.rpd, igd.rpk, igd.rpo, igd.alergi, igd.diagnosis, igd.tata, 'Medis IGD' AS departemen, IF(igd.no_rawat = ?, 1, 0) AS is_current
                  FROM penilaian_medis_igd igd
                  JOIN reg_periksa rp ON igd.no_rawat = rp.no_rawat
                  LEFT JOIN dokter d ON igd.kd_dokter = d.kd_dokter
-                 WHERE igd.no_rawat = ?
+                 WHERE rp.no_rkm_medis = ?
+
+                 UNION ALL
+
+                 SELECT pmrn.no_rawat, pmrn.tanggal, pmrn.kd_dokter, d.nm_dokter, pmrn.anamnesis, pmrn.keluhan_utama, pmrn.rps, pmrn.rpd, pmrn.rpk, pmrn.rpo, pmrn.alergi, pmrn.diagnosis, pmrn.tata, 'Medis Rawat Inap' AS departemen, IF(pmrn.no_rawat = ?, 1, 0) AS is_current
+                 FROM penilaian_medis_ranap pmrn
+                 JOIN reg_periksa rp ON pmrn.no_rawat = rp.no_rawat
+                 LEFT JOIN dokter d ON pmrn.kd_dokter = d.kd_dokter
+                 WHERE rp.no_rkm_medis = ?
+
+                 UNION ALL
+
+                 SELECT pkk.no_rawat, pkk.tanggal, pkk.kd_dokter, d.nm_dokter, pkk.anamnesis, pkk.keluhan_utama, pkk.rps, pkk.rpd, pkk.rpk, pkk.rpo, '' AS alergi, pkk.diagnosis, pkk.terapi AS tata, 'Poli Kulit & Kelamin' AS departemen, IF(pkk.no_rawat = ?, 1, 0) AS is_current
+                 FROM penilaian_medis_ralan_kulitdankelamin pkk
+                 JOIN reg_periksa rp ON pkk.no_rawat = rp.no_rawat
+                 LEFT JOIN dokter d ON pkk.kd_dokter = d.kd_dokter
+                 WHERE rp.no_rkm_medis = ?
+
+                 UNION ALL
+
+                 SELECT pma.no_rawat, pma.tanggal, pma.kd_dokter, d.nm_dokter, pma.anamnesis, pma.keluhan_utama, pma.rps, pma.rpd, '' AS rpk, pma.rpo, pma.alergi, pma.diagnosis, pma.terapi AS tata, 'Poli Spesialis Mata' AS departemen, IF(pma.no_rawat = ?, 1, 0) AS is_current
+                 FROM penilaian_medis_ralan_mata pma
+                 JOIN reg_periksa rp ON pma.no_rawat = rp.no_rawat
+                 LEFT JOIN dokter d ON pma.kd_dokter = d.kd_dokter
+                 WHERE rp.no_rkm_medis = ?
+
+                 UNION ALL
+
+                 SELECT pmb.no_rawat, pmb.tanggal, pmb.kd_dokter, d.nm_dokter, pmb.anamnesis, pmb.keluhan_utama, pmb.rps, pmb.rpd, '' AS rpk, pmb.rpo, pmb.alergi, pmb.diagnosis, pmb.terapi AS tata, 'Poli Spesialis Bedah' AS departemen, IF(pmb.no_rawat = ?, 1, 0) AS is_current
+                 FROM penilaian_medis_ralan_bedah pmb
+                 JOIN reg_periksa rp ON pmb.no_rawat = rp.no_rawat
+                 LEFT JOIN dokter d ON pmb.kd_dokter = d.kd_dokter
+                 WHERE rp.no_rkm_medis = ?
+
+                 UNION ALL
+
+                 SELECT ptht.no_rawat, ptht.tanggal, ptht.kd_dokter, d.nm_dokter, ptht.anamnesis, ptht.keluhan_utama, ptht.rps, ptht.rpd, '' AS rpk, ptht.rpo, ptht.alergi, ptht.diagnosis, COALESCE(ptht.tatalaksana, ptht.terapi) AS tata, 'Poli Spesialis THT' AS departemen, IF(ptht.no_rawat = ?, 1, 0) AS is_current
+                 FROM penilaian_medis_ralan_tht ptht
+                 JOIN reg_periksa rp ON ptht.no_rawat = rp.no_rawat
+                 LEFT JOIN dokter d ON ptht.kd_dokter = d.kd_dokter
+                 WHERE rp.no_rkm_medis = ?
+
+                 UNION ALL
+
+                 SELECT pbm.no_rawat, pbm.tanggal, pbm.kd_dokter, d.nm_dokter, pbm.anamnesis, pbm.keluhan_utama, pbm.rps, '' AS rpd, pbm.rpk, '' AS rpo, pbm.alergi, pbm.diagnosis, pbm.terapi AS tata, 'Poli Bedah Mulut' AS departemen, IF(pbm.no_rawat = ?, 1, 0) AS is_current
+                 FROM penilaian_medis_ralan_bedah_mulut pbm
+                 JOIN reg_periksa rp ON pbm.no_rawat = rp.no_rawat
+                 LEFT JOIN dokter d ON pbm.kd_dokter = d.kd_dokter
+                 WHERE rp.no_rkm_medis = ?
+
+                 UNION ALL
+
+                 SELECT prk.no_rawat, prk.tanggal, prk.kd_dokter, d.nm_dokter, prk.anamnesis, prk.keluhan_utama, prk.rps, prk.rpd, prk.rpk, prk.rpo, prk.alergi, prk.diagnosis, prk.tata, 'Ranap Kebidanan & Kandungan' AS departemen, IF(prk.no_rawat = ?, 1, 0) AS is_current
+                 FROM penilaian_medis_ranap_kandungan prk
+                 JOIN reg_periksa rp ON prk.no_rawat = rp.no_rawat
+                 LEFT JOIN dokter d ON prk.kd_dokter = d.kd_dokter
+                 WHERE rp.no_rkm_medis = ?
+
+                 UNION ALL
+
+                 SELECT prn.no_rawat, prn.tanggal, prn.kd_dokter, d.nm_dokter, '' AS anamnesis, prn.keterangan_faktor_risiko_neonatal AS keluhan_utama, '' AS rps, '' AS rpd, '' AS rpk, '' AS rpo, '' AS alergi, prn.diagnosis, prn.tata, 'Ranap Neonatus' AS departemen, IF(prn.no_rawat = ?, 1, 0) AS is_current
+                 FROM penilaian_medis_ranap_neonatus prn
+                 JOIN reg_periksa rp ON prn.no_rawat = rp.no_rawat
+                 LEFT JOIN dokter d ON prn.kd_dokter = d.kd_dokter
+                 WHERE rp.no_rkm_medis = ?
+
+                 UNION ALL
+
+                 SELECT pok.no_rawat, pok.tanggal, pok.kd_dokter, d.nm_dokter, pok.anamnesis, pok.keluhan_utama, pok.rps, pok.rpd, pok.rpk, pok.rpo, pok.alergi, pok.diagnosis, pok.tata, 'Poli Kandungan & Obgyn' AS departemen, IF(pok.no_rawat = ?, 1, 0) AS is_current
+                 FROM penilaian_medis_ralan_kandungan pok
+                 JOIN reg_periksa rp ON pok.no_rawat = rp.no_rawat
+                 LEFT JOIN dokter d ON pok.kd_dokter = d.kd_dokter
+                 WHERE rp.no_rkm_medis = ?
+
+                 UNION ALL
+
+                 SELECT pan.no_rawat, pan.tanggal, pan.kd_dokter, d.nm_dokter, pan.anamnesis, pan.keluhan_utama, pan.rps, pan.rpd, pan.rpk, pan.rpo, pan.alergi, pan.diagnosis, pan.tata, 'Poli Spesialis Anak' AS departemen, IF(pan.no_rawat = ?, 1, 0) AS is_current
+                 FROM penilaian_medis_ralan_anak pan
+                 JOIN reg_periksa rp ON pan.no_rawat = rp.no_rawat
+                 LEFT JOIN dokter d ON pan.kd_dokter = d.kd_dokter
+                 WHERE rp.no_rkm_medis = ?
+
+                 UNION ALL
+
+                 SELECT pnr.no_rawat, pnr.tanggal, pnr.kd_dokter, d.nm_dokter, pnr.anamnesis, pnr.keluhan_utama, pnr.rps, pnr.rpd, '' AS rpk, pnr.rpo, pnr.alergi, pnr.diagnosis, pnr.terapi AS tata, 'Poli Saraf / Neurologi' AS departemen, IF(pnr.no_rawat = ?, 1, 0) AS is_current
+                 FROM penilaian_medis_ralan_neurologi pnr
+                 JOIN reg_periksa rp ON pnr.no_rawat = rp.no_rawat
+                 LEFT JOIN dokter d ON pnr.kd_dokter = d.kd_dokter
+                 WHERE rp.no_rkm_medis = ?
+
+                 UNION ALL
+
+                 SELECT ppr.no_rawat, ppr.tanggal, ppr.kd_dokter, d.nm_dokter, ppr.anamnesis, ppr.keluhan_utama, ppr.rps, ppr.rpd, '' AS rpk, ppr.rpo, ppr.alergi, ppr.diagnosis, ppr.terapi AS tata, 'Poli Spesialis Paru' AS departemen, IF(ppr.no_rawat = ?, 1, 0) AS is_current
+                 FROM penilaian_medis_ralan_paru ppr
+                 JOIN reg_periksa rp ON ppr.no_rawat = rp.no_rawat
+                 LEFT JOIN dokter d ON ppr.kd_dokter = d.kd_dokter
+                 WHERE rp.no_rkm_medis = ?
+
+                 UNION ALL
+
+                 SELECT pps.no_rawat, pps.tanggal, pps.kd_dokter, d.nm_dokter, pps.anamnesis, pps.keluhan_utama, '' AS rps, pps.riwayat_penyakit_dahulu AS rpd, pps.faktor_keturunan AS rpk, pps.riwayat_obat_diminum AS rpo, pps.riwayat_alergi AS alergi, pps.diagnosis, pps.instruksi_medis AS tata, 'Gawat Darurat Psikiatri' AS departemen, IF(pps.no_rawat = ?, 1, 0) AS is_current
+                 FROM penilaian_medis_ralan_gawat_darurat_psikiatri pps
+                 JOIN reg_periksa rp ON pps.no_rawat = rp.no_rawat
+                 LEFT JOIN dokter d ON pps.kd_dokter = d.kd_dokter
+                 WHERE rp.no_rkm_medis = ?
+
+                 ORDER BY tanggal DESC
+                 LIMIT 100",
+                [
+                    $noRawat, $noRkmMedis,
+                    $noRawat, $noRkmMedis,
+                    $noRawat, $noRkmMedis,
+                    $noRawat, $noRkmMedis,
+                    $noRawat, $noRkmMedis,
+                    $noRawat, $noRkmMedis,
+                    $noRawat, $noRkmMedis,
+                    $noRawat, $noRkmMedis,
+                    $noRawat, $noRkmMedis,
+                    $noRawat, $noRkmMedis,
+                    $noRawat, $noRkmMedis,
+                    $noRawat, $noRkmMedis,
+                    $noRawat, $noRkmMedis,
+                    $noRawat, $noRkmMedis,
+                    $noRawat, $noRkmMedis,
+                    $noRawat, $noRkmMedis
+                ]
+            );
+
+            // 2b. Data Awal Keperawatan & Kebidanan (Ralan, IGD, Ranap, Kebidanan)
+            $keperawatanList = DB::select(
+                "SELECT pakr.no_rawat, pakr.tanggal, pakr.informasi AS anamnesis, pakr.keluhan_utama,
+                        pakr.rpd, pakr.rpk, pakr.rpo, pakr.alergi,
+                        CONCAT_WS(', ',
+                            IF(pakr.td != '', CONCAT('TD: ', pakr.td, ' mmHg'), NULL),
+                            IF(pakr.nadi != '', CONCAT('N: ', pakr.nadi, ' x/m'), NULL),
+                            IF(pakr.rr != '', CONCAT('RR: ', pakr.rr, ' x/m'), NULL),
+                            IF(pakr.suhu != '', CONCAT('Suhu: ', pakr.suhu, ' °C'), NULL),
+                            IF(pakr.gcs != '', CONCAT('GCS: ', pakr.gcs), NULL)
+                        ) AS vital_signs,
+                        COALESCE(pt.nama, pakr.nip) AS petugas,
+                        'Keperawatan Ralan' AS departemen,
+                        IF(pakr.no_rawat = ?, 1, 0) AS is_current
+                 FROM penilaian_awal_keperawatan_ralan pakr
+                 JOIN reg_periksa rp ON pakr.no_rawat = rp.no_rawat
+                 LEFT JOIN petugas pt ON pakr.nip = pt.nip
+                 WHERE rp.no_rkm_medis = ?
+
+                 UNION ALL
+
+                 SELECT paki.no_rawat, paki.tanggal, paki.informasi AS anamnesis, paki.keluhan_utama,
+                        paki.rpd, '' AS rpk, paki.rpo, '' AS alergi,
+                        CONCAT_WS(', ',
+                            IF(paki.tekanan != '', CONCAT('TD: ', paki.tekanan, ' mmHg'), NULL),
+                            IF(paki.pupil != '', CONCAT('Pupil: ', paki.pupil), NULL)
+                        ) AS vital_signs,
+                        COALESCE(pt.nama, paki.nip) AS petugas,
+                        'Keperawatan IGD' AS departemen,
+                        IF(paki.no_rawat = ?, 1, 0) AS is_current
+                 FROM penilaian_awal_keperawatan_igd paki
+                 JOIN reg_periksa rp ON paki.no_rawat = rp.no_rawat
+                 LEFT JOIN petugas pt ON paki.nip = pt.nip
+                 WHERE rp.no_rkm_medis = ?
+
+                 UNION ALL
+
+                 SELECT pakrn.no_rawat, pakrn.tanggal, pakrn.informasi AS anamnesis, pakrn.rps AS keluhan_utama,
+                        pakrn.rpd, pakrn.rpk, pakrn.rpo, pakrn.riwayat_alergi AS alergi,
+                        CONCAT_WS(', ',
+                            IF(pakrn.pemeriksaan_td != '', CONCAT('TD: ', pakrn.pemeriksaan_td, ' mmHg'), NULL),
+                            IF(pakrn.pemeriksaan_nadi != '', CONCAT('N: ', pakrn.pemeriksaan_nadi, ' x/m'), NULL),
+                            IF(pakrn.pemeriksaan_rr != '', CONCAT('RR: ', pakrn.pemeriksaan_rr, ' x/m'), NULL),
+                            IF(pakrn.pemeriksaan_suhu != '', CONCAT('S: ', pakrn.pemeriksaan_suhu, ' °C'), NULL),
+                            IF(pakrn.pemeriksaan_spo2 != '', CONCAT('SpO2: ', pakrn.pemeriksaan_spo2, ' %'), NULL),
+                            IF(pakrn.pemeriksaan_gcs != '', CONCAT('GCS: ', pakrn.pemeriksaan_gcs), NULL)
+                        ) AS vital_signs,
+                        COALESCE(pt.nama, pakrn.nip1) AS petugas,
+                        'Keperawatan Ranap' AS departemen,
+                        IF(pakrn.no_rawat = ?, 1, 0) AS is_current
+                 FROM penilaian_awal_keperawatan_ranap pakrn
+                 JOIN reg_periksa rp ON pakrn.no_rawat = rp.no_rawat
+                 LEFT JOIN petugas pt ON pakrn.nip1 = pt.nip
+                 WHERE rp.no_rkm_medis = ?
+
+                 UNION ALL
+
+                 SELECT pakb.no_rawat, pakb.tanggal, pakb.informasi AS anamnesis, pakb.keluhan_utama,
+                        '' AS rpd, '' AS rpk, '' AS rpo, '' AS alergi,
+                        CONCAT_WS(', ',
+                            IF(pakb.td != '', CONCAT('TD: ', pakb.td, ' mmHg'), NULL),
+                            IF(pakb.nadi != '', CONCAT('N: ', pakb.nadi, ' x/m'), NULL),
+                            IF(pakb.suhu != '', CONCAT('Suhu: ', pakb.suhu, ' °C'), NULL),
+                            IF(pakb.tfu != '', CONCAT('TFU: ', pakb.tfu), NULL),
+                            IF(pakb.tbj != '', CONCAT('TBJ: ', pakb.tbj), NULL)
+                        ) AS vital_signs,
+                        COALESCE(pt.nama, pakb.nip) AS petugas,
+                        'Kebidanan & Kandungan' AS departemen,
+                        IF(pakb.no_rawat = ?, 1, 0) AS is_current
+                 FROM penilaian_awal_keperawatan_kebidanan pakb
+                 JOIN reg_periksa rp ON pakb.no_rawat = rp.no_rawat
+                 LEFT JOIN petugas pt ON pakb.nip = pt.nip
+                 WHERE rp.no_rkm_medis = ?
 
                  ORDER BY tanggal DESC
                  LIMIT 50",
-                [$noRawat, $noRawat, $noRawat]
+                [$noRawat, $noRkmMedis, $noRawat, $noRkmMedis, $noRawat, $noRkmMedis, $noRawat, $noRkmMedis]
             );
-            $awalMedis = $awalMedisList[0] ?? null;
+            
+            // Prioritaskan awal medis dari kunjungan ini jika ada, atau fallback ke yang terbaru
+            $awalMedis = null;
+            foreach ($awalMedisList as $am) {
+                if ($am->no_rawat === $noRawat) {
+                    $awalMedis = $am;
+                    break;
+                }
+            }
+            if (!$awalMedis && !empty($awalMedisList)) {
+                $awalMedis = $awalMedisList[0];
+            }
 
-            // 3. Permintaan & HASIL Laboratorium berdasarkan no_rawat
+            // 3. Permintaan & HASIL Laboratorium berdasarkan no_rkm_medis
             $labOrders = DB::select(
                 "SELECT pl.noorder, pl.no_rawat, pl.tgl_permintaan, pl.jam_permintaan, pl.diagnosa_klinis, pl.informasi_tambahan,
-                        GROUP_CONCAT(jpl.nm_perawatan SEPARATOR ', ') AS detail_pemeriksaan
+                        GROUP_CONCAT(jpl.nm_perawatan SEPARATOR ', ') AS detail_pemeriksaan,
+                        IF(pl.no_rawat = ?, 1, 0) AS is_current
                  FROM permintaan_lab pl
                  JOIN reg_periksa rp ON pl.no_rawat = rp.no_rawat
                  LEFT JOIN permintaan_detail_permintaan_lab pdl ON pl.noorder = pdl.noorder
                  LEFT JOIN jns_perawatan_lab jpl ON pdl.kd_jenis_prw = jpl.kd_jenis_prw
-                 WHERE pl.no_rawat = ?
+                 WHERE rp.no_rkm_medis = ?
                  GROUP BY pl.noorder, pl.no_rawat, pl.tgl_permintaan, pl.jam_permintaan, pl.diagnosa_klinis, pl.informasi_tambahan
                  ORDER BY pl.tgl_permintaan DESC, pl.jam_permintaan DESC
                  LIMIT 50",
-                [$noRawat]
+                [$noRawat, $noRkmMedis]
             );
 
             $labResults = DB::select(
@@ -134,53 +387,59 @@ class RajalController extends Controller
                         COALESCE(tl.Pemeriksaan, jpl.nm_perawatan) AS nama_pemeriksaan,
                         COALESCE(dpl.nilai, '-') AS nilai,
                         COALESCE(dpl.nilai_rujukan, '-') AS nilai_rujukan,
-                        COALESCE(dpl.keterangan, '') AS keterangan
+                        COALESCE(tl.satuan, '') AS satuan,
+                        COALESCE(dpl.keterangan, '') AS keterangan,
+                        IF(dpl.no_rawat = ?, 1, 0) AS is_current
                  FROM detail_periksa_lab dpl
                  JOIN reg_periksa rp ON dpl.no_rawat = rp.no_rawat
                  LEFT JOIN jns_perawatan_lab jpl ON dpl.kd_jenis_prw = jpl.kd_jenis_prw
                  LEFT JOIN template_laboratorium tl ON dpl.id_template = tl.id_template
-                 WHERE dpl.no_rawat = ?
+                 WHERE rp.no_rkm_medis = ?
                  ORDER BY dpl.tgl_periksa DESC, dpl.jam DESC
-                 LIMIT 100",
-                [$noRawat]
+                 LIMIT 200",
+                [$noRawat, $noRkmMedis]
             );
 
-            // 4. Permintaan & HASIL Radiologi (Ekspertisi) berdasarkan no_rawat
+            // 4. Permintaan & HASIL Radiologi berdasarkan no_rkm_medis
             $radOrders = DB::select(
                 "SELECT pr.noorder, pr.no_rawat, pr.tgl_permintaan, pr.jam_permintaan, pr.diagnosa_klinis, pr.informasi_tambahan,
-                        GROUP_CONCAT(jpr.nm_perawatan SEPARATOR ', ') AS detail_pemeriksaan
+                        GROUP_CONCAT(jpr.nm_perawatan SEPARATOR ', ') AS detail_pemeriksaan,
+                        IF(pr.no_rawat = ?, 1, 0) AS is_current
                  FROM permintaan_radiologi pr
                  JOIN reg_periksa rp ON pr.no_rawat = rp.no_rawat
                  LEFT JOIN permintaan_pemeriksaan_radiologi pdr ON pr.noorder = pdr.noorder
                  LEFT JOIN jns_perawatan_radiologi jpr ON pdr.kd_jenis_prw = jpr.kd_jenis_prw
-                 WHERE pr.no_rawat = ?
+                 WHERE rp.no_rkm_medis = ?
                  GROUP BY pr.noorder, pr.no_rawat, pr.tgl_permintaan, pr.jam_permintaan, pr.diagnosa_klinis, pr.informasi_tambahan
                  ORDER BY pr.tgl_permintaan DESC, pr.jam_permintaan DESC
                  LIMIT 50",
-                [$noRawat]
+                [$noRawat, $noRkmMedis]
             );
 
             $radResults = DB::select(
-                "SELECT hr.no_rawat, hr.tgl_periksa, hr.jam, hr.hasil
+                "SELECT hr.no_rawat, hr.tgl_periksa, hr.jam, hr.hasil,
+                        IF(hr.no_rawat = ?, 1, 0) AS is_current
                  FROM hasil_radiologi hr
                  JOIN reg_periksa rp ON hr.no_rawat = rp.no_rawat
-                 WHERE hr.no_rawat = ?
+                 WHERE rp.no_rkm_medis = ?
                  ORDER BY hr.tgl_periksa DESC, hr.jam DESC
-                 LIMIT 20",
-                [$noRawat]
+                 LIMIT 30",
+                [$noRawat, $noRkmMedis]
             );
 
-            // 5. Data Resep Dokter berdasarkan no_rawat (Obat Jadi & Obat Racikan)
+            // 5. Data Resep Dokter berdasarkan no_rkm_medis (Obat Jadi & Obat Racikan)
             $rawResep = DB::select(
                 "SELECT ro.no_resep, ro.no_rawat, ro.tgl_perawatan, COALESCE(ro.jam, '00:00:00') AS jam,
                         ro.tgl_peresepan, ro.jam_peresepan, ro.status, ro.tgl_penyerahan, ro.jam_penyerahan,
-                        COALESCE(d.nm_dokter, 'Dokter') AS nm_dokter
+                        COALESCE(d.nm_dokter, 'Dokter') AS nm_dokter,
+                        IF(ro.no_rawat = ?, 1, 0) AS is_current
                  FROM resep_obat ro
+                 JOIN reg_periksa rp ON ro.no_rawat = rp.no_rawat
                  LEFT JOIN dokter d ON ro.kd_dokter = d.kd_dokter
-                 WHERE ro.no_rawat = ?
-                 ORDER BY ro.tgl_perawatan DESC, ro.jam DESC
-                 LIMIT 50",
-                [$noRawat]
+                 WHERE rp.no_rkm_medis = ?
+                 ORDER BY ro.tgl_peresepan DESC, ro.jam_peresepan DESC, ro.tgl_perawatan DESC, ro.jam DESC
+                 LIMIT 60",
+                [$noRawat, $noRkmMedis]
             );
 
             $resepList = [];
@@ -188,9 +447,11 @@ class RajalController extends Controller
                 // Non-racikan
                 $obatList = DB::select(
                     "SELECT rd.kode_brng, rd.jml, rd.aturan_pakai, rd.keterangan,
-                            db.nama_brng, db.kode_sat, db.ralanshare AS harga
+                            db.nama_brng, db.kode_sat, db.ralan AS harga, db.kapasitas,
+                            COALESCE(gb.stok, 0) AS stok, COALESCE(gb.stok, 0) AS stok_depo
                      FROM resep_dokter rd
                      LEFT JOIN databarang db ON rd.kode_brng = db.kode_brng
+                     LEFT JOIN gudangbarang gb ON rd.kode_brng = gb.kode_brng AND gb.kd_bangsal = 'G002'
                      WHERE rd.no_resep = ?",
                     [$r->no_resep]
                 );
@@ -198,7 +459,7 @@ class RajalController extends Controller
                 // Racikan
                 $racikList = DB::select(
                     "SELECT rdr.no_racik, rdr.nama_racik, rdr.kd_racik, rdr.jml_dr, rdr.aturan_pakai, rdr.keterangan,
-                            mr.nm_racik AS metode
+                            COALESCE(mr.nm_racik, 'Racikan') AS metode
                      FROM resep_dokter_racikan rdr
                      LEFT JOIN metode_racik mr ON rdr.kd_racik = mr.kd_racik
                      WHERE rdr.no_resep = ?
@@ -209,12 +470,16 @@ class RajalController extends Controller
                 foreach ($racikList as $rc) {
                     $rc->detail = DB::select(
                         "SELECT rdrd.kode_brng, rdrd.p1, rdrd.p2, rdrd.kandungan, rdrd.jml,
-                                db.nama_brng, db.kode_sat
+                                db.nama_brng, db.kode_sat, db.kapasitas,
+                                COALESCE(gb.stok, 0) AS stok, COALESCE(gb.stok, 0) AS stok_depo
                          FROM resep_dokter_racikan_detail rdrd
                          LEFT JOIN databarang db ON rdrd.kode_brng = db.kode_brng
+                         LEFT JOIN gudangbarang gb ON rdrd.kode_brng = gb.kode_brng AND gb.kd_bangsal = 'G002'
                          WHERE rdrd.no_resep = ? AND rdrd.no_racik = ?",
                         [$r->no_resep, $rc->no_racik]
                     );
+                    // Alias detail_racik for frontend compatibility
+                    $rc->detail_racik = $rc->detail;
                 }
 
                 // Summary HTML string for quick display
@@ -244,38 +509,71 @@ class RajalController extends Controller
                     'jam_penyerahan'  => $r->jam_penyerahan,
                     'nm_dokter'       => $r->nm_dokter,
                     'can_delete'      => $canDelete,
+                    'is_current'      => (bool) $r->is_current,
                     'detail_obat'     => implode('<br>', $summaryParts),
                     'obat_list'       => $obatList,
+                    'obat_non_racik'  => $obatList, // alias
                     'racik_list'      => $racikList,
+                    'obat_racikan'    => $racikList, // alias
                 ];
             }
 
-            // 6. Data Booking Operasi & LAPORAN OPERASI berdasarkan no_rawat
+            // 6. Data Booking Operasi & LAPORAN OPERASI berdasarkan no_rkm_medis
             $bookingOps = DB::select(
-                "SELECT bo.*, po.nm_perawatan AS nama_paket, po.kelas, po.kategori, p.png_jawab, d.nm_dokter AS dokter_operator
+                "SELECT bo.*, po.nm_perawatan AS nama_paket, po.kelas, po.kategori, p.png_jawab,
+                        d.nm_dokter AS dokter_operator, ro.nm_ruang_ok,
+                        IF(bo.no_rawat = ?, 1, 0) AS is_current
                  FROM booking_operasi bo
                  JOIN reg_periksa rp ON bo.no_rawat = rp.no_rawat
                  LEFT JOIN paket_operasi po ON bo.kode_paket = po.kode_paket
                  LEFT JOIN penjab p ON po.kd_pj = p.kd_pj
                  LEFT JOIN dokter d ON bo.kd_dokter = d.kd_dokter
-                 WHERE bo.no_rawat = ?
+                 LEFT JOIN ruang_ok ro ON bo.kd_ruang_ok = ro.kd_ruang_ok
+                 WHERE rp.no_rkm_medis = ?
                  ORDER BY bo.tanggal DESC, bo.jam_mulai DESC
                  LIMIT 50",
-                [$noRawat]
+                [$noRawat, $noRkmMedis]
             );
 
             $laporanOps = DB::select(
-                "SELECT lo.*, d.nm_dokter AS dokter_operator
+                "SELECT lo.*, d.nm_dokter AS dokter_operator,
+                        IF(lo.no_rawat = ?, 1, 0) AS is_current
                  FROM laporan_operasi lo
                  JOIN reg_periksa rp ON lo.no_rawat = rp.no_rawat
                  LEFT JOIN dokter d ON rp.kd_dokter = d.kd_dokter
-                 WHERE lo.no_rawat = ?
+                 WHERE rp.no_rkm_medis = ?
                  ORDER BY lo.tanggal DESC
-                 LIMIT 20",
-                [$noRawat]
+                 LIMIT 30",
+                [$noRawat, $noRkmMedis]
             );
 
-            // 7. Data Diagnosa Pasien (ICD-10)
+            // 6c. Data Riwayat Tindakan Operasi Selesai (tabel operasi)
+            $tagihanOperasi = DB::select(
+                "SELECT o.no_rawat, o.tgl_operasi, o.kode_paket, o.status, o.kategori, o.jenis_anasthesi,
+                        po.nm_perawatan AS nama_paket, po.kelas,
+                        d1.nm_dokter AS operator1_nama,
+                        d2.nm_dokter AS dokter_anestesi_nama,
+                        (o.biayaoperator1 + o.biayaoperator2 + o.biayaoperator3 + o.biayaasisten_operator1 +
+                         o.biayaasisten_operator2 + o.biayaasisten_operator3 + o.biayainstrumen +
+                         o.biayadokter_anak + o.biayaperawaat_resusitas + o.biayadokter_anestesi +
+                         o.biayaasisten_anestesi + o.biayaasisten_anestesi2 + o.biayabidan +
+                         o.biayabidan2 + o.biayabidan3 + o.biayaperawat_luar + o.biayaalat +
+                         o.biayasewaok + o.akomodasi + o.bagian_rs + o.biaya_omloop + o.biaya_omloop2 +
+                         o.biaya_omloop3 + o.biaya_omloop4 + o.biaya_omloop5 + o.biayasarpras +
+                         o.biaya_dokter_pjanak + o.biaya_dokter_umum) AS total_biaya,
+                        IF(o.no_rawat = ?, 1, 0) AS is_current
+                 FROM operasi o
+                 JOIN reg_periksa rp ON o.no_rawat = rp.no_rawat
+                 LEFT JOIN paket_operasi po ON o.kode_paket = po.kode_paket
+                 LEFT JOIN dokter d1 ON o.operator1 = d1.kd_dokter
+                 LEFT JOIN dokter d2 ON o.dokter_anestesi = d2.kd_dokter
+                 WHERE rp.no_rkm_medis = ?
+                 ORDER BY o.tgl_operasi DESC
+                 LIMIT 30",
+                [$noRawat, $noRkmMedis]
+            );
+
+            // 7. Data Diagnosa Pasien (ICD-10) untuk no_rawat aktif & riwayat lampau
             $diagnosaList = DB::select(
                 "SELECT dp.no_rawat, dp.kd_penyakit, dp.prioritas, dp.status, dp.status_penyakit, py.nm_penyakit
                  FROM diagnosa_pasien dp
@@ -285,7 +583,41 @@ class RajalController extends Controller
                 [$noRawat]
             );
 
-            // 8. Data Tindakan Rawat Jalan (rawat_jl_dr + rawat_jl_drpr)
+            $riwayatDiagnosa = DB::select(
+                "SELECT dp.no_rawat, dp.kd_penyakit, dp.prioritas, dp.status, dp.status_penyakit, py.nm_penyakit, rp.tgl_registrasi
+                 FROM diagnosa_pasien dp
+                 JOIN reg_periksa rp ON dp.no_rawat = rp.no_rawat
+                 LEFT JOIN penyakit py ON py.kd_penyakit = dp.kd_penyakit
+                 WHERE rp.no_rkm_medis = ?
+                 ORDER BY rp.tgl_registrasi DESC, dp.prioritas ASC
+                 LIMIT 50",
+                [$noRkmMedis]
+            );
+
+            // 7b. Data Prosedur Pasien (ICD-9-CM) untuk no_rawat aktif & riwayat lampau
+            $prosedurList = DB::select(
+                "SELECT pp.no_rawat, pp.kode, pp.status, pp.prioritas,
+                        COALESCE(i9.deskripsi_panjang, i9.deskripsi_pendek, pp.kode) AS nama_prosedur
+                 FROM prosedur_pasien pp
+                 LEFT JOIN icd9 i9 ON pp.kode = i9.kode
+                 WHERE pp.no_rawat = ?
+                 ORDER BY pp.prioritas ASC, pp.kode ASC",
+                [$noRawat]
+            );
+
+            $riwayatProsedur = DB::select(
+                "SELECT pp.no_rawat, pp.kode, pp.status, pp.prioritas, rp.tgl_registrasi,
+                        COALESCE(i9.deskripsi_panjang, i9.deskripsi_pendek, pp.kode) AS nama_prosedur
+                 FROM prosedur_pasien pp
+                 JOIN reg_periksa rp ON pp.no_rawat = rp.no_rawat
+                 LEFT JOIN icd9 i9 ON pp.kode = i9.kode
+                 WHERE rp.no_rkm_medis = ?
+                 ORDER BY rp.tgl_registrasi DESC, pp.prioritas ASC
+                 LIMIT 50",
+                [$noRkmMedis]
+            );
+
+            // 8. Data Tindakan Rawat Jalan untuk no_rawat aktif (Dokter, Paramedis, Dokter & Paramedis)
             $tindakanList = DB::select(
                 "SELECT rjd.no_rawat, rjd.tgl_perawatan, rjd.jam_rawat, rjd.kd_jenis_prw, jp.nm_perawatan, rjd.biaya_rawat AS total_byr,
                         COALESCE(d.nm_dokter, rjd.kd_dokter) AS petugas, 'Dokter' AS jenis, p.png_jawab
@@ -306,9 +638,69 @@ class RajalController extends Controller
                  LEFT JOIN petugas pt ON pt.nip = rjdp.nip
                  WHERE rjdp.no_rawat = ?
 
+                 UNION ALL
+
+                 SELECT rjp.no_rawat, rjp.tgl_perawatan, rjp.jam_rawat, rjp.kd_jenis_prw, jp.nm_perawatan, rjp.biaya_rawat AS total_byr,
+                        COALESCE(pt2.nama, rjp.nip) AS petugas, 'Paramedis' AS jenis, p3.png_jawab
+                 FROM rawat_jl_pr rjp
+                 LEFT JOIN jns_perawatan jp ON jp.kd_jenis_prw = rjp.kd_jenis_prw
+                 LEFT JOIN penjab p3 ON jp.kd_pj = p3.kd_pj
+                 LEFT JOIN petugas pt2 ON pt2.nip = rjp.nip
+                 WHERE rjp.no_rawat = ?
+
                  ORDER BY tgl_perawatan DESC, jam_rawat DESC
                  LIMIT 200",
-                [$noRawat, $noRawat]
+                [$noRawat, $noRawat, $noRawat]
+            );
+
+            // 8b. Riwayat Tindakan Medis Lampau (Ralan & Ranap) Seluruh Kunjungan
+            $riwayatTindakan = DB::select(
+                "SELECT rjd.no_rawat, rjd.tgl_perawatan, rjd.jam_rawat, rjd.kd_jenis_prw, jp.nm_perawatan, rjd.biaya_rawat AS total_byr,
+                        COALESCE(d.nm_dokter, rjd.kd_dokter) AS petugas, 'Dokter (Ralan)' AS jenis, p.png_jawab, rp.tgl_registrasi
+                 FROM rawat_jl_dr rjd
+                 JOIN reg_periksa rp ON rjd.no_rawat = rp.no_rawat
+                 LEFT JOIN jns_perawatan jp ON jp.kd_jenis_prw = rjd.kd_jenis_prw
+                 LEFT JOIN penjab p ON jp.kd_pj = p.kd_pj
+                 LEFT JOIN dokter d ON d.kd_dokter = rjd.kd_dokter
+                 WHERE rp.no_rkm_medis = ?
+
+                 UNION ALL
+
+                 SELECT rjdp.no_rawat, rjdp.tgl_perawatan, rjdp.jam_rawat, rjdp.kd_jenis_prw, jp.nm_perawatan, rjdp.biaya_rawat AS total_byr,
+                        COALESCE(d2.nm_dokter, pt.nama, rjdp.nip) AS petugas, 'Dr & Paramedis (Ralan)' AS jenis, p2.png_jawab, rp.tgl_registrasi
+                 FROM rawat_jl_drpr rjdp
+                 JOIN reg_periksa rp ON rjdp.no_rawat = rp.no_rawat
+                 LEFT JOIN jns_perawatan jp ON jp.kd_jenis_prw = rjdp.kd_jenis_prw
+                 LEFT JOIN penjab p2 ON jp.kd_pj = p2.kd_pj
+                 LEFT JOIN dokter d2 ON d2.kd_dokter = rjdp.kd_dokter
+                 LEFT JOIN petugas pt ON pt.nip = rjdp.nip
+                 WHERE rp.no_rkm_medis = ?
+
+                 UNION ALL
+
+                 SELECT rjp.no_rawat, rjp.tgl_perawatan, rjp.jam_rawat, rjp.kd_jenis_prw, jp.nm_perawatan, rjp.biaya_rawat AS total_byr,
+                        COALESCE(pt2.nama, rjp.nip) AS petugas, 'Paramedis (Ralan)' AS jenis, p3.png_jawab, rp.tgl_registrasi
+                 FROM rawat_jl_pr rjp
+                 JOIN reg_periksa rp ON rjp.no_rawat = rp.no_rawat
+                 LEFT JOIN jns_perawatan jp ON jp.kd_jenis_prw = rjp.kd_jenis_prw
+                 LEFT JOIN penjab p3 ON jp.kd_pj = p3.kd_pj
+                 LEFT JOIN petugas pt2 ON pt2.nip = rjp.nip
+                 WHERE rp.no_rkm_medis = ?
+
+                 UNION ALL
+
+                 SELECT rid.no_rawat, rid.tgl_perawatan, rid.jam_rawat, rid.kd_jenis_prw, jpi.nm_perawatan, rid.biaya_rawat AS total_byr,
+                        COALESCE(di.nm_dokter, rid.kd_dokter) AS petugas, 'Dokter (Ranap)' AS jenis, pi.png_jawab, rp.tgl_registrasi
+                 FROM rawat_inap_dr rid
+                 JOIN reg_periksa rp ON rid.no_rawat = rp.no_rawat
+                 LEFT JOIN jns_perawatan_inap jpi ON jpi.kd_jenis_prw = rid.kd_jenis_prw
+                 LEFT JOIN penjab pi ON jpi.kd_pj = pi.kd_pj
+                 LEFT JOIN dokter di ON di.kd_dokter = rid.kd_dokter
+                 WHERE rp.no_rkm_medis = ?
+
+                 ORDER BY tgl_perawatan DESC, jam_rawat DESC
+                 LIMIT 100",
+                [$noRkmMedis, $noRkmMedis, $noRkmMedis, $noRkmMedis]
             );
 
             // 9. Data Resume Pasien Rawat Jalan (resume_pasien)
@@ -316,22 +708,52 @@ class RajalController extends Controller
                 ->where('no_rawat', $noRawat)
                 ->first();
 
+            $riwayatResume = DB::table('resume_pasien as rp_resume')
+                ->join('reg_periksa as rp', 'rp_resume.no_rawat', '=', 'rp.no_rawat')
+                ->where('rp.no_rkm_medis', $noRkmMedis)
+                ->orderBy('rp.tgl_registrasi', 'DESC')
+                ->limit(10)
+                ->select('rp_resume.*', 'rp.tgl_registrasi')
+                ->get();
+
+            // 9b. Data Resume Rawat Inap (resume_pasien_ranap / Discharge Summary)
+            $resumeRanap = DB::table('resume_pasien_ranap')
+                ->where('no_rawat', $noRawat)
+                ->first();
+
+            $riwayatResumeRanap = DB::table('resume_pasien_ranap as rpr')
+                ->join('reg_periksa as rp', 'rpr.no_rawat', '=', 'rp.no_rawat')
+                ->where('rp.no_rkm_medis', $noRkmMedis)
+                ->orderBy('rp.tgl_registrasi', 'DESC')
+                ->limit(10)
+                ->select('rpr.*', 'rp.tgl_registrasi')
+                ->get();
+
             return response()->json([
-                'success'       => true,
-                'pasien'        => $pasien,
-                'soapList'      => $soapList,
-                'awalMedis'     => $awalMedis,
-                'awalMedisList' => $awalMedisList,
-                'labOrders'     => $labOrders,
-                'labResults'    => $labResults,
-                'radOrders'     => $radOrders,
-                'radResults'    => $radResults,
-                'resepList'     => $resepList,
-                'bookingOps'    => $bookingOps,
-                'laporanOps'    => $laporanOps,
-                'diagnosaList'  => $diagnosaList,
-                'tindakanList'  => $tindakanList,
-                'resumePasien'  => $resumePasien,
+                'success'            => true,
+                'pasien'             => $pasien,
+                'soapList'           => $soapList,
+                'awalMedis'          => $awalMedis,
+                'awalMedisList'      => $awalMedisList,
+                'keperawatanList'    => $keperawatanList,
+                'labOrders'          => $labOrders,
+                'labResults'         => $labResults,
+                'radOrders'          => $radOrders,
+                'radResults'         => $radResults,
+                'resepList'          => $resepList,
+                'bookingOps'         => $bookingOps,
+                'laporanOps'         => $laporanOps,
+                'tagihanOperasi'     => $tagihanOperasi,
+                'diagnosaList'       => $diagnosaList,
+                'riwayatDiagnosa'    => $riwayatDiagnosa,
+                'prosedurList'       => $prosedurList,
+                'riwayatProsedur'    => $riwayatProsedur,
+                'tindakanList'       => $tindakanList,
+                'riwayatTindakan'    => $riwayatTindakan,
+                'resumePasien'       => $resumePasien,
+                'riwayatResume'      => $riwayatResume,
+                'resumeRanap'        => $resumeRanap,
+                'riwayatResumeRanap' => $riwayatResumeRanap,
             ]);
 
         } catch (\Exception $e) {
@@ -345,6 +767,12 @@ class RajalController extends Controller
     public function simpanSoap(Request $request)
     {
         try {
+            $isAdmin  = session('auth_user.is_admin', false);
+            $isDokter = session('auth_user.is_dokter', false);
+            if (!$isAdmin && !$isDokter) {
+                return response()->json(['success' => false, 'message' => 'Akses ditolak. Hanya dokter dan admin utama yang berhak mengisi atau mengubah SOAP.'], 403);
+            }
+
             $noRawat = $request->input('no_rawat');
             $tglPerawatan = $request->input('tgl_perawatan', now()->toDateString());
             $jamRawat     = $request->input('jam_rawat', now()->toTimeString());
@@ -379,6 +807,35 @@ class RajalController extends Controller
             );
 
             return response()->json(['success' => true, 'message' => 'Data SOAP berhasil disimpan.']);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    public function hapusSoap(Request $request)
+    {
+        try {
+            $isAdmin  = session('auth_user.is_admin', false);
+            $isDokter = session('auth_user.is_dokter', false);
+            if (!$isAdmin && !$isDokter) {
+                return response()->json(['success' => false, 'message' => 'Akses ditolak. Hanya dokter dan admin utama yang berhak menghapus data SOAP.'], 403);
+            }
+
+            $noRawat      = $request->input('no_rawat');
+            $tglPerawatan = $request->input('tgl_perawatan');
+            $jamRawat     = $request->input('jam_rawat');
+
+            if (!$noRawat || !$tglPerawatan || !$jamRawat) {
+                return response()->json(['success' => false, 'message' => 'Parameter no_rawat, tgl_perawatan, dan jam_rawat diperlukan.'], 400);
+            }
+
+            DB::table('pemeriksaan_ralan')
+                ->where('no_rawat', $noRawat)
+                ->where('tgl_perawatan', $tglPerawatan)
+                ->where('jam_rawat', $jamRawat)
+                ->delete();
+
+            return response()->json(['success' => true, 'message' => 'Data SOAP berhasil dihapus.']);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
@@ -623,17 +1080,55 @@ class RajalController extends Controller
      */
     public function masterObat(Request $request)
     {
-        $q = $request->input('q', '');
-        $data = DB::select(
-            "SELECT db.kode_brng, db.nama_brng, db.kode_sat, db.ralanshare AS harga, db.kapasitas,
-                    COALESCE(SUM(gb.stok), 0) AS stok
-             FROM databarang db
-             LEFT JOIN gudangbarang gb ON db.kode_brng = gb.kode_brng
-             WHERE db.status = '1' AND (db.nama_brng LIKE ? OR db.kode_brng LIKE ?)
-             GROUP BY db.kode_brng, db.nama_brng, db.kode_sat, db.ralanshare, db.kapasitas
-             ORDER BY db.nama_brng ASC LIMIT 50",
-            ["%{$q}%", "%{$q}%"]
-        );
+        $q         = $request->input('q', '');
+        $hanyaStok = filter_var($request->input('hanya_stok', false), FILTER_VALIDATE_BOOLEAN);
+        $kategori  = $request->input('kategori', '');
+        
+        // Menggunakan 1 depo obat yaitu DEPO FARMASI RALAN (G002)
+        $kdDepo = 'G002';
+        $lokasi = DB::table('set_lokasi')->first();
+        if ($lokasi && !empty($lokasi->kd_bangsal)) {
+            $kdDepo = $lokasi->kd_bangsal;
+        }
+
+        $query = DB::table('databarang as db')
+            ->leftJoin('gudangbarang as gb', function ($join) use ($kdDepo) {
+                $join->on('db.kode_brng', '=', 'gb.kode_brng')
+                     ->where('gb.kd_bangsal', '=', $kdDepo);
+            })
+            ->leftJoin('kategori_barang as k', 'db.kode_kategori', '=', 'k.kode')
+            ->leftJoin('jenis as j', 'db.kdjns', '=', 'j.kdjns')
+            ->where('db.status', '1');
+
+        if (!empty($q)) {
+            $query->where(function ($w) use ($q) {
+                $w->where('db.nama_brng', 'LIKE', "%{$q}%")
+                  ->orWhere('db.kode_brng', 'LIKE', "%{$q}%")
+                  ->orWhere('k.nama', 'LIKE', "%{$q}%")
+                  ->orWhere('j.nama', 'LIKE', "%{$q}%");
+            });
+        }
+
+        if (!empty($kategori)) {
+            $query->where('db.kode_kategori', $kategori);
+        }
+
+        if ($hanyaStok) {
+            $query->where('gb.stok', '>', 0);
+        }
+
+        $data = $query->select(
+            'db.kode_brng',
+            'db.nama_brng',
+            'db.kode_sat',
+            'db.ralan as harga',
+            'db.kapasitas',
+            DB::raw('COALESCE(gb.stok, 0) as stok'),
+            DB::raw('COALESCE(gb.stok, 0) as stok_depo'),
+            DB::raw("COALESCE(k.nama, '-') as kategori"),
+            DB::raw("COALESCE(j.nama, '-') as jenis")
+        )->orderBy('db.nama_brng', 'asc')->get();
+
         return response()->json($data);
     }
 
@@ -651,35 +1146,192 @@ class RajalController extends Controller
     public function simpanResep(Request $request)
     {
         try {
-            $noRawat   = $request->input('no_rawat');
-            $items     = $request->input('items', []);   // Obat Jadi: [{kode_brng, jml, aturan_pakai, keterangan}]
-            $racikan   = $request->input('racikan', []); // Obat Racik: [{nama_racik, kd_racik, jml_dr, aturan_pakai, keterangan, detail: [{kode_brng, p1, p2, kandungan, jml}]}]
-            $kdDokter  = session('auth_user.kode', '-');
-            $tglResep  = now()->toDateString();
-            $jamResep  = now()->toTimeString();
+            $isAdmin  = session('auth_user.is_admin', false);
+            $isDokter = session('auth_user.is_dokter', false);
+            if (!$isAdmin && !$isDokter) {
+                return response()->json(['success' => false, 'message' => 'Akses ditolak. Hanya dokter dan admin utama yang berhak membuat atau mengubah resep obat.'], 403);
+            }
+
+            $noRawat     = $request->input('no_rawat');
+            $noResepEdit = $request->input('no_resep'); // Jika ada, ini adalah mode EDIT
+            $items       = $request->input('items', []);   // Obat Jadi: [{kode_brng, jml, aturan_pakai, keterangan}]
+            $racikan     = $request->input('racikan', []); // Obat Racik: [{nama_racik, kd_racik, jml_dr, aturan_pakai, keterangan, detail: [{kode_brng, p1, p2, kandungan, jml}]}]
+            $kdDokter    = session('auth_user.kode', '-');
+            $tglResep    = now()->toDateString();
+            $jamResep    = now()->toTimeString();
 
             if (empty($items) && empty($racikan)) {
                 return response()->json(['success' => false, 'message' => 'Pilih minimal 1 obat jadi atau racikan untuk resep.'], 400);
             }
 
-            // Generate No Resep: YYYYMMDDxxxx
-            $prefix = date('Ymd');
-            $lastResep = DB::table('resep_obat')->where('no_resep', 'LIKE', "{$prefix}%")->max('no_resep');
-            $lastNum = $lastResep ? (int) substr($lastResep, -4) : 0;
-            $noResep = $prefix . sprintf('%04d', $lastNum + 1);
+            // === 1. VALIDASI KETAT OBAT JADI (NON-RACIK) ===
+            foreach ($items as $idx => $item) {
+                $kodeBrng = $item['kode_brng'] ?? '';
+                $jml = isset($item['jml']) ? (float) $item['jml'] : 0;
+                $aturanPakai = trim($item['aturan_pakai'] ?? '');
 
-            DB::table('resep_obat')->insert([
-                'no_resep'       => $noResep,
-                'tgl_perawatan'  => $tglResep,
-                'jam'            => $jamResep,
-                'no_rawat'       => $noRawat,
-                'kd_dokter'      => $kdDokter,
-                'tgl_peresepan'  => $tglResep,
-                'jam_peresepan'  => $jamResep,
-                'status'         => 'ralan',
-                'tgl_penyerahan' => '0000-00-00',
-                'jam_penyerahan' => '00:00:00',
-            ]);
+                if (empty($kodeBrng)) {
+                    continue;
+                }
+
+                $brng = DB::table('databarang')->where('kode_brng', $kodeBrng)->first();
+                $namaBrng = $brng ? $brng->nama_brng : ($item['nama'] ?? $kodeBrng);
+
+                if ($jml <= 0) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Jumlah untuk obat '{$namaBrng}' harus lebih dari 0."
+                    ], 422);
+                }
+
+                if (empty($aturanPakai) || $aturanPakai === '-') {
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Aturan pakai untuk obat '{$namaBrng}' wajib diisi."
+                    ], 422);
+                }
+
+                // Cek stok riil Depo Farmasi Ralan (G002)
+                $stokRow = DB::table('gudangbarang')
+                    ->where('kode_brng', $kodeBrng)
+                    ->where('kd_bangsal', 'G002')
+                    ->first();
+                $currentStok = $stokRow ? (float) $stokRow->stok : 0;
+
+                if ($currentStok <= 0) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Stok obat '{$namaBrng}' habis/kosong di Depo Farmasi Ralan (G002) sehingga tidak dapat diresepkan."
+                    ], 422);
+                }
+
+                if ($jml > $currentStok) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Jumlah permintaan obat '{$namaBrng}' ({$jml}) melebihi stok yang tersedia di Depo Farmasi Ralan ({$currentStok})."
+                    ], 422);
+                }
+            }
+
+            // === 2. VALIDASI KETAT OBAT RACIKAN ===
+            foreach ($racikan as $rIdx => $racik) {
+                $namaRacik = trim($racik['nama_racik'] ?? '');
+                $jmlDr = isset($racik['jml_dr']) ? (int) $racik['jml_dr'] : 0;
+                $aturanPakai = trim($racik['aturan_pakai'] ?? '');
+                $detail = $racik['detail'] ?? [];
+
+                if (empty($namaRacik)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Nama racikan ke-" . ($rIdx + 1) . " wajib diisi."
+                    ], 422);
+                }
+
+                if ($jmlDr <= 0) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Jumlah kemasan untuk racikan '{$namaRacik}' harus minimal 1."
+                    ], 422);
+                }
+
+                if (empty($aturanPakai) || $aturanPakai === '-') {
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Aturan pakai untuk racikan '{$namaRacik}' wajib diisi."
+                    ], 422);
+                }
+
+                if (empty($detail)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Racikan '{$namaRacik}' belum memiliki bahan obat. Masukkan minimal 1 bahan racik."
+                    ], 422);
+                }
+
+                foreach ($detail as $dIdx => $det) {
+                    $kodeBrng = $det['kode_brng'] ?? '';
+                    $jmlBahan = isset($det['jml']) ? (float) $det['jml'] : 0;
+
+                    if (empty($kodeBrng)) {
+                        continue;
+                    }
+
+                    $brng = DB::table('databarang')->where('kode_brng', $kodeBrng)->first();
+                    $namaBrng = $brng ? $brng->nama_brng : ($det['nama_brng'] ?? $kodeBrng);
+
+                    if ($jmlBahan <= 0) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => "Jumlah kebutuhan bahan '{$namaBrng}' pada racikan '{$namaRacik}' harus lebih dari 0."
+                        ], 422);
+                    }
+
+                    // Cek stok riil Depo Farmasi Ralan (G002)
+                    $stokRow = DB::table('gudangbarang')
+                        ->where('kode_brng', $kodeBrng)
+                        ->where('kd_bangsal', 'G002')
+                        ->first();
+                    $currentStok = $stokRow ? (float) $stokRow->stok : 0;
+
+                    if ($currentStok <= 0) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => "Bahan obat '{$namaBrng}' pada racikan '{$namaRacik}' habis/kosong di Depo Farmasi Ralan (G002)."
+                        ], 422);
+                    }
+
+                    if ($jmlBahan > $currentStok) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => "Kebutuhan bahan racik '{$namaBrng}' ({$jmlBahan}) pada racikan '{$namaRacik}' melebihi stok yang tersedia di Depo Farmasi Ralan ({$currentStok})."
+                        ], 422);
+                    }
+                }
+            }
+
+            if (!empty($noResepEdit)) {
+                // === MODE EDIT RESEP ===
+                $existing = DB::table('resep_obat')->where('no_resep', $noResepEdit)->first();
+                if (!$existing) {
+                    return response()->json(['success' => false, 'message' => 'Resep obat tidak ditemukan.'], 404);
+                }
+                if ($existing->tgl_penyerahan && $existing->tgl_penyerahan != '0000-00-00') {
+                    return response()->json(['success' => false, 'message' => 'Resep ini sudah diserahkan / divalidasi oleh Farmasi dan tidak dapat diubah lagi.'], 400);
+                }
+
+                $noResep = $noResepEdit;
+
+                // Hapus data item & racikan lama
+                DB::table('resep_dokter_racikan_detail')->where('no_resep', $noResep)->delete();
+                DB::table('resep_dokter_racikan')->where('no_resep', $noResep)->delete();
+                DB::table('resep_dokter')->where('no_resep', $noResep)->delete();
+
+                // Perbarui resep_obat
+                DB::table('resep_obat')->where('no_resep', $noResep)->update([
+                    'kd_dokter'     => $kdDokter,
+                    'tgl_peresepan' => $tglResep,
+                    'jam_peresepan' => $jamResep,
+                ]);
+            } else {
+                // === MODE RESEP BARU ===
+                $prefix = date('Ymd');
+                $lastResep = DB::table('resep_obat')->where('no_resep', 'LIKE', "{$prefix}%")->max('no_resep');
+                $lastNum = $lastResep ? (int) substr($lastResep, -4) : 0;
+                $noResep = $prefix . sprintf('%04d', $lastNum + 1);
+
+                DB::table('resep_obat')->insert([
+                    'no_resep'       => $noResep,
+                    'tgl_perawatan'  => $tglResep,
+                    'jam'            => $jamResep,
+                    'no_rawat'       => $noRawat,
+                    'kd_dokter'      => $kdDokter,
+                    'tgl_peresepan'  => $tglResep,
+                    'jam_peresepan'  => $jamResep,
+                    'status'         => 'ralan',
+                    'tgl_penyerahan' => '0000-00-00',
+                    'jam_penyerahan' => '00:00:00',
+                ]);
+            }
 
             // Simpan Obat Jadi (resep_dokter)
             foreach ($items as $item) {
@@ -696,7 +1348,7 @@ class RajalController extends Controller
 
             // Simpan Obat Racikan (resep_dokter_racikan & detail)
             foreach ($racikan as $idx => $racik) {
-                $noRacik = sprintf('%02d', $idx + 1);
+                $noRacik = (string) ($racik['no_racik'] ?? ($idx + 1));
                 DB::table('resep_dokter_racikan')->insert([
                     'no_resep'     => $noResep,
                     'no_racik'     => $noRacik,
@@ -722,7 +1374,12 @@ class RajalController extends Controller
                 }
             }
 
-            return response()->json(['success' => true, 'message' => "E-Resep Dokter ({$noResep}) berhasil disimpan."]);
+            $actionText = !empty($noResepEdit) ? 'diperbarui' : 'disimpan & dikirim ke Farmasi';
+            return response()->json([
+                'success'  => true,
+                'no_resep' => $noResep,
+                'message'  => "E-Resep Dokter ({$noResep}) berhasil {$actionText}."
+            ]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
@@ -731,6 +1388,12 @@ class RajalController extends Controller
     public function hapusResep(Request $request)
     {
         try {
+            $isAdmin  = session('auth_user.is_admin', false);
+            $isDokter = session('auth_user.is_dokter', false);
+            if (!$isAdmin && !$isDokter) {
+                return response()->json(['success' => false, 'message' => 'Akses ditolak. Hanya dokter dan admin utama yang berhak membatalkan resep obat.'], 403);
+            }
+
             $noResep = $request->input('no_resep');
             $noRawat = $request->input('no_rawat');
 
@@ -759,21 +1422,54 @@ class RajalController extends Controller
     }
 
     /**
-     * 6. MASTER & SIMPAN JADWAL / BOOKING OPERASI
+     * 6. MASTER & SIMPAN JADWAL / BOOKING OPERASI & LAPORAN OPERASI
      */
     public function masterOperasi(Request $request)
     {
         $q = $request->input('q', '');
-        $data = DB::table('paket_operasi as po')
+        $kategori = $request->input('kategori', '');
+        $kelas = $request->input('kelas', '');
+
+        $query = DB::table('paket_operasi as po')
             ->leftJoin('penjab as p', 'po.kd_pj', '=', 'p.kd_pj')
-            ->where(function ($w) use ($q) {
+            ->where('po.status', '1');
+
+        if (!empty($q)) {
+            $query->where(function ($w) use ($q) {
                 $w->where('po.nm_perawatan', 'LIKE', "%{$q}%")
                   ->orWhere('po.kode_paket', 'LIKE', "%{$q}%");
-            })
-            ->select('po.kode_paket', 'po.nm_perawatan', 'po.kategori', 'po.kelas', 'p.png_jawab')
-            ->orderBy('po.nm_perawatan', 'asc')
-            ->limit(60)
-            ->get();
+            });
+        }
+
+        if (!empty($kategori)) {
+            $query->where('po.kategori', $kategori);
+        }
+
+        if (!empty($kelas)) {
+            $query->where(function ($w) use ($kelas) {
+                $w->where('po.kelas', $kelas)->orWhere('po.kelas', '-');
+            });
+        }
+
+        $data = $query->select(
+            'po.kode_paket',
+            'po.nm_perawatan',
+            'po.kategori',
+            'po.kelas',
+            'po.operator1',
+            'p.png_jawab',
+            DB::raw('(po.operator1 + po.operator2 + po.operator3 +
+                      po.asisten_operator1 + po.asisten_operator2 + po.asisten_operator3 +
+                      po.instrumen + po.dokter_anak + po.perawaat_resusitas +
+                      po.alat + po.dokter_anestesi + po.asisten_anestesi + po.asisten_anestesi2 +
+                      po.bidan + po.bidan2 + po.bidan3 + po.perawat_luar + po.sewa_ok +
+                      po.akomodasi + po.bagian_rs + po.omloop + po.omloop2 + po.omloop3 +
+                      po.omloop4 + po.omloop5 + po.sarpras + po.dokter_pjanak + po.dokter_umum) AS total_tarif')
+        )
+        ->orderBy('po.nm_perawatan', 'asc')
+        ->limit(100)
+        ->get();
+
         return response()->json($data);
     }
 
@@ -789,32 +1485,261 @@ class RajalController extends Controller
         return response()->json($data);
     }
 
+    public function masterRuangOk(Request $request)
+    {
+        $data = DB::table('ruang_ok')
+            ->select('kd_ruang_ok', 'nm_ruang_ok')
+            ->orderBy('kd_ruang_ok', 'asc')
+            ->get();
+        return response()->json($data);
+    }
+
+    public function masterTemplateLaporanOperasi(Request $request)
+    {
+        $q = $request->input('q', '');
+        $data = DB::table('template_laporan_operasi')
+            ->where(function ($w) use ($q) {
+                if (!empty($q)) {
+                    $w->where('nama_operasi', 'LIKE', "%{$q}%")
+                      ->orWhere('no_template', 'LIKE', "%{$q}%")
+                      ->orWhere('diagnosa_preop', 'LIKE', "%{$q}%")
+                      ->orWhere('diagnosa_postop', 'LIKE', "%{$q}%");
+                }
+            })
+            ->select('no_template', 'nama_operasi', 'diagnosa_preop', 'diagnosa_postop', 'jaringan_dieksisi', 'permintaan_pa', 'laporan_operasi')
+            ->orderBy('nama_operasi', 'asc')
+            ->limit(50)
+            ->get();
+        return response()->json($data);
+    }
+
     public function simpanBookingOperasi(Request $request)
     {
         try {
-            $noRawat   = $request->input('no_rawat');
-            $kodePaket = $request->input('kode_paket');
-            $tanggal   = $request->input('tanggal', now()->toDateString());
-            $jamMulai  = $request->input('jam_mulai', '08:00:00');
-            $jamSelesai= $request->input('jam_selesai', '09:30:00');
-            $kdDokter  = $request->input('kd_dokter') ?: session('auth_user.kode', '');
-            $status    = $request->input('status', 'Menunggu');
+            if (!session('auth_user.is_admin') && !session('auth_user.is_dokter')) {
+                return response()->json(['success' => false, 'message' => 'Hanya Dokter dan Admin Utama yang berwenang menjadwalkan operasi.'], 403);
+            }
+
+            $noRawat    = $request->input('no_rawat');
+            $kodePaket  = $request->input('kode_paket');
+            $tanggal    = $request->input('tanggal', now()->toDateString());
+            $jamMulai   = $request->input('jam_mulai', '08:00:00');
+            $jamSelesai = $request->input('jam_selesai', '09:30:00');
+            $kdDokter   = $request->input('kd_dokter') ?: session('auth_user.kode', '');
+            $kdRuangOk  = $request->input('kd_ruang_ok') ?: 'O1';
+            $status     = $request->input('status', 'Menunggu');
 
             if (empty($kodePaket)) {
                 return response()->json(['success' => false, 'message' => 'Pilih paket operasi terlebih dahulu.'], 400);
             }
 
-            DB::table('booking_operasi')->insert([
-                'no_rawat'   => $noRawat,
-                'kode_paket' => $kodePaket,
-                'tanggal'    => $tanggal,
-                'jam_mulai'  => $jamMulai,
-                'jam_selesai'=> $jamSelesai,
-                'status'     => $status,
-                'kd_dokter'  => $kdDokter,
+            if (strlen($jamMulai) == 5) $jamMulai .= ':00';
+            if (strlen($jamSelesai) == 5) $jamSelesai .= ':00';
+
+            if (!in_array($status, ['Menunggu', 'Proses Operasi', 'Selesai'])) {
+                $status = 'Menunggu';
+            }
+
+            // Pengecekan Bentrok Jadwal Operasi (Collision Check) persis Khanza DlgBookingOperasi.java
+            $bentrok = DB::table('booking_operasi')
+                ->where('tanggal', $tanggal)
+                ->where('kd_ruang_ok', $kdRuangOk)
+                ->where('no_rawat', '<>', $noRawat)
+                ->where(function ($q) use ($jamMulai, $jamSelesai) {
+                    $q->whereBetween('jam_mulai', [$jamMulai, $jamSelesai])
+                      ->orWhere(function ($sub) use ($jamMulai, $jamSelesai) {
+                          $sub->where('jam_mulai', '<=', $jamMulai)
+                              ->where('jam_selesai', '>=', $jamMulai);
+                      });
+                })
+                ->count();
+
+            if ($bentrok > 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Jadwal bentrok dengan jam mulai operasi yang lain di Kamar Bedah ({$kdRuangOk})! Silakan pilih jam atau kamar OK lain."
+                ], 400);
+            }
+
+            $oldKodePaket = $request->input('old_kode_paket');
+            $oldTanggal   = $request->input('old_tanggal');
+            $oldJamMulai  = $request->input('old_jam_mulai');
+
+            if (!empty($oldKodePaket) && !empty($oldTanggal)) {
+                if (strlen($oldJamMulai) == 5) $oldJamMulai .= ':00';
+                $updateQuery = DB::table('booking_operasi')
+                    ->where('no_rawat', $noRawat)
+                    ->where('kode_paket', $oldKodePaket)
+                    ->where('tanggal', $oldTanggal);
+                if (!empty($oldJamMulai)) {
+                    $updateQuery->where('jam_mulai', $oldJamMulai);
+                }
+                $updateQuery->update([
+                    'kode_paket'  => $kodePaket,
+                    'tanggal'     => $tanggal,
+                    'jam_mulai'   => $jamMulai,
+                    'jam_selesai' => $jamSelesai,
+                    'status'      => $status,
+                    'kd_dokter'   => $kdDokter,
+                    'kd_ruang_ok' => $kdRuangOk,
+                ]);
+                $msg = 'Jadwal Booking Operasi berhasil diperbarui.';
+            } else {
+                $existing = DB::table('booking_operasi')
+                    ->where('no_rawat', $noRawat)
+                    ->where('kode_paket', $kodePaket)
+                    ->where('tanggal', $tanggal)
+                    ->first();
+
+                if ($existing) {
+                    DB::table('booking_operasi')
+                        ->where('no_rawat', $noRawat)
+                        ->where('kode_paket', $kodePaket)
+                        ->where('tanggal', $tanggal)
+                        ->update([
+                            'jam_mulai'   => $jamMulai,
+                            'jam_selesai' => $jamSelesai,
+                            'status'      => $status,
+                            'kd_dokter'   => $kdDokter,
+                            'kd_ruang_ok' => $kdRuangOk,
+                        ]);
+                    $msg = 'Jadwal Booking Operasi berhasil diperbarui.';
+                } else {
+                    DB::table('booking_operasi')->insert([
+                        'no_rawat'    => $noRawat,
+                        'kode_paket'  => $kodePaket,
+                        'tanggal'     => $tanggal,
+                        'jam_mulai'   => $jamMulai,
+                        'jam_selesai' => $jamSelesai,
+                        'status'      => $status,
+                        'kd_dokter'   => $kdDokter,
+                        'kd_ruang_ok' => $kdRuangOk,
+                    ]);
+                    $msg = 'Jadwal Booking Operasi berhasil disimpan.';
+                }
+            }
+
+            return response()->json(['success' => true, 'message' => $msg]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    public function hapusBookingOperasi(Request $request)
+    {
+        try {
+            if (!session('auth_user.is_admin') && !session('auth_user.is_dokter')) {
+                return response()->json(['success' => false, 'message' => 'Hanya Dokter dan Admin Utama yang berwenang menghapus booking operasi.'], 403);
+            }
+
+            $noRawat   = $request->input('no_rawat');
+            $kodePaket = $request->input('kode_paket');
+            $tanggal   = $request->input('tanggal');
+
+            if (!$noRawat || !$kodePaket || !$tanggal) {
+                return response()->json(['success' => false, 'message' => 'Parameter no_rawat, kode_paket, dan tanggal wajib disertakan.'], 400);
+            }
+
+            DB::table('booking_operasi')
+                ->where('no_rawat', $noRawat)
+                ->where('kode_paket', $kodePaket)
+                ->where('tanggal', $tanggal)
+                ->delete();
+
+            return response()->json(['success' => true, 'message' => 'Jadwal Booking Operasi berhasil dihapus.']);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    public function simpanLaporanOperasi(Request $request)
+    {
+        try {
+            if (!session('auth_user.is_admin') && !session('auth_user.is_dokter')) {
+                return response()->json(['success' => false, 'message' => 'Hanya Dokter dan Admin Utama yang berwenang menyimpan Laporan Operasi.'], 403);
+            }
+
+            $noRawat = $request->input('no_rawat');
+            if (empty($noRawat)) {
+                return response()->json(['success' => false, 'message' => 'No. Rawat tidak valid.'], 400);
+            }
+
+            $tanggalLaporan    = $request->input('tanggal') ?: now()->toDateTimeString();
+            $tglMulaiOperasi   = $request->input('tgl_operasi') ?: $tanggalLaporan;
+            $tglSelesaiOperasi = $request->input('selesaioperasi') ?: $tanggalLaporan;
+
+            $diagnosaPreop     = $request->input('diagnosa_preop', '-');
+            $diagnosaPostop    = $request->input('diagnosa_postop', '-');
+            $jaringanDieksekusi= $request->input('jaringan_dieksekusi', '-');
+            $permintaanPa      = $request->input('permintaan_pa', 'Tidak');
+            $jenisAnasthesi    = $request->input('jenis_anasthesi', '-');
+            $kategori          = $request->input('kategori', '-');
+            $laporanOperasi    = $request->input('laporan_operasi', '');
+
+            if (empty($laporanOperasi)) {
+                return response()->json(['success' => false, 'message' => 'Uraian Laporan Operasi wajib diisi.'], 400);
+            }
+
+            $validKategori = ['-', 'Khusus', 'Besar', 'Sedang', 'Kecil', 'Elektive', 'Emergency'];
+            if (!in_array($kategori, $validKategori)) {
+                $kategori = '-';
+            }
+
+            $permintaanPa = ($permintaanPa === 'Ya') ? 'Ya' : 'Tidak';
+
+            $oldTanggal = $request->input('old_tanggal');
+            if (!empty($oldTanggal)) {
+                DB::table('laporan_operasi')
+                    ->where('no_rawat', $noRawat)
+                    ->where('tanggal', $oldTanggal)
+                    ->delete();
+            } else {
+                DB::table('laporan_operasi')
+                    ->where('no_rawat', $noRawat)
+                    ->where('tanggal', $tanggalLaporan)
+                    ->delete();
+            }
+
+            DB::table('laporan_operasi')->insert([
+                'no_rawat'            => $noRawat,
+                'tanggal'             => $tanggalLaporan,
+                'diagnosa_preop'      => $diagnosaPreop,
+                'diagnosa_postop'     => $diagnosaPostop,
+                'jaringan_dieksekusi' => $jaringanDieksekusi,
+                'selesaioperasi'      => $tglSelesaiOperasi,
+                'permintaan_pa'       => $permintaanPa,
+                'laporan_operasi'     => $laporanOperasi,
+                'tgl_operasi'         => $tglMulaiOperasi,
+                'jenis_anasthesi'     => $jenisAnasthesi,
+                'kategori'            => $kategori,
             ]);
 
-            return response()->json(['success' => true, 'message' => 'Jadwal Booking Operasi berhasil disimpan.']);
+            return response()->json(['success' => true, 'message' => 'Laporan Operasi berhasil disimpan sesuai standar SIMRS.']);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    public function hapusLaporanOperasi(Request $request)
+    {
+        try {
+            if (!session('auth_user.is_admin') && !session('auth_user.is_dokter')) {
+                return response()->json(['success' => false, 'message' => 'Hanya Dokter dan Admin Utama yang berwenang menghapus Laporan Operasi.'], 403);
+            }
+
+            $noRawat = $request->input('no_rawat');
+            $tanggal = $request->input('tanggal');
+
+            if (!$noRawat || !$tanggal) {
+                return response()->json(['success' => false, 'message' => 'No. Rawat dan tanggal laporan wajib disertakan.'], 400);
+            }
+
+            DB::table('laporan_operasi')
+                ->where('no_rawat', $noRawat)
+                ->where('tanggal', $tanggal)
+                ->delete();
+
+            return response()->json(['success' => true, 'message' => 'Laporan Operasi berhasil dihapus.']);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
@@ -883,6 +1808,12 @@ class RajalController extends Controller
     public function hapusDiagnosa(Request $request)
     {
         try {
+            $isAdmin  = session('auth_user.is_admin', false);
+            $isDokter = session('auth_user.is_dokter', false);
+            if (!$isAdmin && !$isDokter) {
+                return response()->json(['success' => false, 'message' => 'Akses ditolak. Hanya dokter dan admin utama yang berhak menghapus diagnosa.'], 403);
+            }
+
             $noRawat    = $request->input('no_rawat');
             $kdPenyakit = $request->input('kd_penyakit');
 
@@ -943,6 +1874,12 @@ class RajalController extends Controller
     public function simpanTindakan(Request $request)
     {
         try {
+            $isAdmin  = session('auth_user.is_admin', false);
+            $isDokter = session('auth_user.is_dokter', false);
+            if (!$isAdmin && !$isDokter) {
+                return response()->json(['success' => false, 'message' => 'Akses ditolak. Hanya dokter dan admin utama yang berhak menambah tindakan.'], 403);
+            }
+
             $noRawat      = $request->input('no_rawat');
             $kdJenisPrw   = $request->input('kd_jenis_prw');
             $tglPerawatan = $request->input('tgl_perawatan', now()->toDateString());
@@ -980,6 +1917,21 @@ class RajalController extends Controller
                     'biaya_rawat'      => $jenis_prw->total_byrdr ?? 0,
                     'stts_bayar'       => 'Belum',
                 ]);
+            } elseif ($jenis === 'Paramedis') {
+                DB::table('rawat_jl_pr')->insert([
+                    'no_rawat'         => $noRawat,
+                    'kd_jenis_prw'     => $kdJenisPrw,
+                    'nip'              => $nip,
+                    'tgl_perawatan'    => $tglPerawatan,
+                    'jam_rawat'        => $jamRawat,
+                    'material'         => $jenis_prw->material ?? 0,
+                    'bhp'              => $jenis_prw->bhp ?? 0,
+                    'tarif_tindakanpr' => $jenis_prw->tarif_tindakanpr ?? 0,
+                    'kso'              => $jenis_prw->kso ?? 0,
+                    'menejemen'        => $jenis_prw->menejemen ?? 0,
+                    'biaya_rawat'      => $jenis_prw->total_byrpr ?? 0,
+                    'stts_bayar'       => 'Belum',
+                ]);
             } else {
                 DB::table('rawat_jl_drpr')->insert([
                     'no_rawat'         => $noRawat,
@@ -1009,6 +1961,12 @@ class RajalController extends Controller
     public function hapusTindakan(Request $request)
     {
         try {
+            $isAdmin  = session('auth_user.is_admin', false);
+            $isDokter = session('auth_user.is_dokter', false);
+            if (!$isAdmin && !$isDokter) {
+                return response()->json(['success' => false, 'message' => 'Akses ditolak. Hanya dokter dan admin utama yang berhak menghapus tindakan.'], 403);
+            }
+
             $noRawat    = $request->input('no_rawat');
             $kdJenisPrw = $request->input('kd_jenis_prw');
             $tgl        = $request->input('tgl_perawatan');
@@ -1017,6 +1975,13 @@ class RajalController extends Controller
 
             if ($jenis === 'Dokter') {
                 DB::table('rawat_jl_dr')
+                    ->where('no_rawat', $noRawat)
+                    ->where('kd_jenis_prw', $kdJenisPrw)
+                    ->where('tgl_perawatan', $tgl)
+                    ->where('jam_rawat', $jam)
+                    ->delete();
+            } elseif ($jenis === 'Paramedis') {
+                DB::table('rawat_jl_pr')
                     ->where('no_rawat', $noRawat)
                     ->where('kd_jenis_prw', $kdJenisPrw)
                     ->where('tgl_perawatan', $tgl)
@@ -1332,5 +2297,179 @@ class RajalController extends Controller
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
+    }
+
+    /** Master Prosedur ICD-9-CM */
+    public function masterProsedur(Request $request)
+    {
+        $q = $request->input('q', '');
+        $data = DB::table('icd9')
+            ->where('status', '1')
+            ->where(function ($w) use ($q) {
+                if (!empty($q)) {
+                    $w->where('kode', 'LIKE', "%{$q}%")
+                      ->orWhere('deskripsi_panjang', 'LIKE', "%{$q}%")
+                      ->orWhere('deskripsi_pendek', 'LIKE', "%{$q}%");
+                }
+            })
+            ->select('kode', 'deskripsi_panjang', 'deskripsi_pendek')
+            ->orderBy('kode', 'asc')
+            ->limit(50)
+            ->get();
+
+        return response()->json($data);
+    }
+
+    /** Simpan Prosedur Pasien ICD-9-CM */
+    public function simpanProsedur(Request $request)
+    {
+        try {
+            if (!session('auth_user.is_admin') && !session('auth_user.is_dokter')) {
+                return response()->json(['success' => false, 'message' => 'Akses ditolak. Hanya dokter dan admin utama yang berhak menambah prosedur ICD-9.'], 403);
+            }
+
+            $noRawat   = $request->input('no_rawat');
+            $kode      = $request->input('kode');
+            $prioritas = $request->input('prioritas', 1);
+            $status    = $request->input('status', 'Ralan');
+
+            if (empty($noRawat) || empty($kode)) {
+                return response()->json(['success' => false, 'message' => 'No. Rawat dan Kode Prosedur wajib diisi.'], 400);
+            }
+
+            DB::table('prosedur_pasien')->updateOrInsert(
+                [
+                    'no_rawat' => $noRawat,
+                    'kode'     => $kode,
+                ],
+                [
+                    'status'    => $status,
+                    'prioritas' => $prioritas,
+                ]
+            );
+
+            return response()->json(['success' => true, 'message' => "Prosedur ICD-9 ({$kode}) berhasil disimpan."]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    /** Hapus Prosedur Pasien ICD-9-CM */
+    public function hapusProsedur(Request $request)
+    {
+        try {
+            if (!session('auth_user.is_admin') && !session('auth_user.is_dokter')) {
+                return response()->json(['success' => false, 'message' => 'Akses ditolak. Hanya dokter dan admin utama yang berhak menghapus prosedur ICD-9.'], 403);
+            }
+
+            $noRawat = $request->input('no_rawat');
+            $kode    = $request->input('kode');
+
+            if (empty($noRawat) || empty($kode)) {
+                return response()->json(['success' => false, 'message' => 'Parameter no_rawat dan kode wajib disertakan.'], 400);
+            }
+
+            DB::table('prosedur_pasien')
+                ->where('no_rawat', $noRawat)
+                ->where('kode', $kode)
+                ->delete();
+
+            return response()->json(['success' => true, 'message' => "Prosedur ICD-9 ({$kode}) berhasil dihapus."]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    /** Cetak Formulir Laporan Operasi Standar SIMRS */
+    public function cetakLaporanOperasi(Request $request, $no_rawat = null)
+    {
+        $raw = $no_rawat ?: $request->input('no_rawat');
+        if ($raw) {
+            $decoded = base64_decode($raw, true);
+            $noRawat = ($decoded && strpos($decoded, '/') !== false) ? $decoded : $raw;
+        } else {
+            $noRawat = null;
+        }
+
+        $tanggal = $request->input('tanggal');
+
+        $lapQuery = DB::table('laporan_operasi as lo')
+            ->join('reg_periksa as rp', 'lo.no_rawat', '=', 'rp.no_rawat')
+            ->join('pasien as p', 'rp.no_rkm_medis', '=', 'p.no_rkm_medis')
+            ->leftJoin('dokter as d', 'rp.kd_dokter', '=', 'd.kd_dokter')
+            ->leftJoin('poliklinik as pol', 'rp.kd_poli', '=', 'pol.kd_poli')
+            ->where('lo.no_rawat', $noRawat);
+
+        if (!empty($tanggal)) {
+            $lapQuery->where('lo.tanggal', $tanggal);
+        }
+
+        $lap = $lapQuery->select('lo.*', 'p.nm_pasien', 'p.no_rkm_medis', 'p.jk', 'p.tgl_lahir', 'rp.umurdaftar', 'rp.sttsumur', 'd.nm_dokter as operator', 'pol.nm_poli')
+            ->orderByDesc('lo.tanggal')
+            ->first();
+
+        if (!$lap) {
+            return response("Data Laporan Operasi ({$noRawat}" . ($tanggal ? " - {$tanggal}" : "") . ") tidak ditemukan.", 404);
+        }
+
+        $setting = DB::table('setting')->first() ?: (object)[
+            'nama_instansi'    => 'RS NAMIRA',
+            'alamat_instansi'  => 'Jl. KH. Ahmad Dahlan No. 1, Pancor, Selong',
+            'kabupaten'        => 'Kabupaten Lombok Timur',
+            'propinsi'         => 'Nusa Tenggara Barat',
+            'kontak'           => '(0376) 21123 / 22211',
+            'email'            => 'rsnamira@gmail.com',
+        ];
+
+        return view('rawat-jalan.cetak-laporan-operasi', compact('lap', 'setting'));
+    }
+
+    /** Cetak Bukti Jadwal Booking Operasi Standar SIMRS */
+    public function cetakBookingOperasi(Request $request, $no_rawat = null)
+    {
+        $raw = $no_rawat ?: $request->input('no_rawat');
+        if ($raw) {
+            $decoded = base64_decode($raw, true);
+            $noRawat = ($decoded && strpos($decoded, '/') !== false) ? $decoded : $raw;
+        } else {
+            $noRawat = null;
+        }
+
+        $kodePaket = $request->input('kode_paket');
+        $tanggal   = $request->input('tanggal');
+
+        $bookingQuery = DB::table('booking_operasi as bo')
+            ->join('reg_periksa as rp', 'bo.no_rawat', '=', 'rp.no_rawat')
+            ->join('pasien as p', 'rp.no_rkm_medis', '=', 'p.no_rkm_medis')
+            ->leftJoin('paket_operasi as po', 'bo.kode_paket', '=', 'po.kode_paket')
+            ->leftJoin('dokter as d', 'bo.kd_dokter', '=', 'd.kd_dokter')
+            ->leftJoin('ruang_ok as ro', 'bo.kd_ruang_ok', '=', 'ro.kd_ruang_ok')
+            ->where('bo.no_rawat', $noRawat);
+
+        if (!empty($kodePaket)) {
+            $bookingQuery->where('bo.kode_paket', $kodePaket);
+        }
+        if (!empty($tanggal)) {
+            $bookingQuery->where('bo.tanggal', $tanggal);
+        }
+
+        $booking = $bookingQuery->select('bo.*', 'p.nm_pasien', 'p.no_rkm_medis', 'p.jk', 'p.tgl_lahir', 'rp.umurdaftar', 'rp.sttsumur', 'po.nm_perawatan as nama_paket', 'po.kelas', 'd.nm_dokter as operator', 'ro.nm_ruang_ok')
+            ->orderByDesc('bo.tanggal')
+            ->first();
+
+        if (!$booking) {
+            return response("Data Booking Operasi ({$noRawat}) tidak ditemukan.", 404);
+        }
+
+        $setting = DB::table('setting')->first() ?: (object)[
+            'nama_instansi'    => 'RS NAMIRA',
+            'alamat_instansi'  => 'Jl. KH. Ahmad Dahlan No. 1, Pancor, Selong',
+            'kabupaten'        => 'Kabupaten Lombok Timur',
+            'propinsi'         => 'Nusa Tenggara Barat',
+            'kontak'           => '(0376) 21123 / 22211',
+            'email'            => 'rsnamira@gmail.com',
+        ];
+
+        return view('rawat-jalan.cetak-booking-operasi', compact('booking', 'setting'));
     }
 }

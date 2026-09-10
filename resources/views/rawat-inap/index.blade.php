@@ -1556,13 +1556,18 @@
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="tab-operasi-btn" type="button" onclick="switchTab('operasi')">
+                        <i class="bi bi-calendar-event-fill"></i> 7. Operasi / Bedah <span class="badge bg-secondary ms-1" id="badge-operasi">0</span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
                     <button class="nav-link" id="tab-riwayat-btn" type="button" onclick="switchTab('riwayat')">
-                        <i class="bi bi-clock-history"></i> 7. Riwayat Lengkap
+                        <i class="bi bi-clock-history"></i> 8. Riwayat Lengkap
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" id="tab-resume-btn" type="button" onclick="switchTab('resume')">
-                        <i class="bi bi-file-earmark-medical"></i> 8. Resume Ranap <span class="badge bg-secondary ms-1" id="badge-resume">0</span>
+                        <i class="bi bi-file-earmark-medical"></i> 9. Resume Ranap <span class="badge bg-secondary ms-1" id="badge-resume">0</span>
                     </button>
                 </li>
             </ul>
@@ -1961,7 +1966,211 @@
                     </div>
                 </div>
 
-                {{-- ── Tab 7: Riwayat Lengkap ── --}}
+                {{-- ── Tab 7: Operasi / Bedah (SIMRS-Namira Standar) ── --}}
+                <div class="ranap-tab-panel" id="panel-operasi">
+                    {{-- Sub-Navigation Tab Operasi Ranap --}}
+                    <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2 flex-wrap gap-2">
+                        <ul class="nav nav-pills gap-1.5" id="pills-ops-ranap-mode" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="btn btn-sm btn-outline-danger active font-bold text-xs py-1.5 px-3 rounded-pill" id="pills-ops-booking-ranap-tab" data-bs-toggle="pill" data-bs-target="#pills-ops-booking-ranap" type="button" role="tab">
+                                    <i class="bi bi-calendar-event me-1"></i> 1. Booking Jadwal Operasi (<span id="countOpsRanapBookingText">0</span>)
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="btn btn-sm btn-outline-primary font-bold text-xs py-1.5 px-3 rounded-pill" id="pills-ops-laporan-ranap-tab" data-bs-toggle="pill" data-bs-target="#pills-ops-laporan-ranap" type="button" role="tab">
+                                    <i class="bi bi-file-earmark-medical me-1"></i> 2. Laporan Operasi SIMRS (<span id="countOpsRanapLaporanText">0</span>)
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div class="tab-content" id="pills-ops-ranap-content">
+                        {{-- ── SUB-PANEL 1: BOOKING JADWAL OPERASI RANAP ── --}}
+                        <div class="tab-pane fade show active" id="pills-ops-booking-ranap" role="tabpanel">
+                            <div class="soap-form-card mb-3">
+                                <form id="formOperasiRanap">
+                                    <input type="hidden" name="no_rawat" id="opsRanapNoRawat">
+
+                                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2 border-bottom pb-2">
+                                        <h6 class="mb-0" style="font-size:.92rem; font-weight:800; color:#0f172a;">
+                                            <i class="bi bi-calendar-check-fill text-danger me-2"></i>
+                                            Booking Jadwal Operasi / Kamar Bedah (OK) Rawat Inap
+                                        </h6>
+                                        <button type="button" class="btn btn-outline-danger btn-sm font-bold text-xs rounded-pill px-3 py-1.5" onclick="bukaModalCariPaketRanap()">
+                                            <i class="bi bi-search me-1"></i> Cari &amp; Pilih Paket Operasi
+                                        </button>
+                                    </div>
+
+                                    <div class="row g-2.5 mb-3">
+                                        <div class="col-md-7">
+                                            <label class="form-label font-bold text-xs text-slate-600 mb-1">Paket Operasi / Tindakan Bedah <span class="text-danger">*</span></label>
+                                            <select name="kode_paket" id="opsRanapKodePaket" class="form-select form-select-sm select2-search">
+                                                <option value="">-- Pilih Paket Operasi --</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-5">
+                                            <label class="form-label font-bold text-xs text-slate-600 mb-1">Dokter Operator (Bedah) <span class="text-danger">*</span></label>
+                                            <select name="kd_dokter" id="opsRanapKdDokter" class="form-select form-select-sm select2-search">
+                                                <option value="">-- Pilih Dokter Operator --</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label font-bold text-xs text-slate-600 mb-1">Ruang Operasi (OK)</label>
+                                            <select name="kd_ruang_ok" id="opsRanapKdRuangOk" class="form-select form-select-sm select2-search">
+                                                <option value="O1">KAMAR OPERASI 1</option>
+                                                <option value="O2">KAMAR OPERASI 2</option>
+                                                <option value="O3">KAMAR OPERASI 3</option>
+                                                <option value="O4">KAMAR OPERASI 4</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label font-bold text-xs text-slate-600 mb-1">Tanggal Operasi</label>
+                                            <input type="date" name="tanggal" id="opsRanapTanggal" class="form-control form-control-sm" value="{{ now()->toDateString() }}">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label font-bold text-xs text-slate-600 mb-1">Jam Mulai</label>
+                                            <input type="time" name="jam_mulai" id="opsRanapJamMulai" class="form-control form-control-sm" value="08:00">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label font-bold text-xs text-slate-600 mb-1">Jam Selesai</label>
+                                            <input type="time" name="jam_selesai" id="opsRanapJamSelesai" class="form-control form-control-sm" value="09:30">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label font-bold text-xs text-slate-600 mb-1">Status</label>
+                                            <select name="status" id="opsRanapStatus" class="form-select form-select-sm">
+                                                <option value="Menunggu">Menunggu</option>
+                                                <option value="Proses Operasi">Proses Operasi</option>
+                                                <option value="Selesai">Selesai</option>
+                                                <option value="Batal">Batal</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div class="d-flex justify-content-end">
+                                        <button type="button" class="btn btn-danger font-bold text-xs px-4 py-2" style="border-radius:8px;" id="btnSimpanOperasiRanap">
+                                            <i class="bi bi-calendar-check-fill me-1"></i> Simpan Jadwal Operasi
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+
+                            <div class="soap-form-card">
+                                <h6 class="section-title mb-3"><i class="bi bi-clock-history text-primary"></i> Riwayat Booking Jadwal Operasi Pasien</h6>
+                                <div id="riwayatOpsRanapContainer">
+                                    <div class="empty-state py-3"><i class="bi bi-calendar-event fs-3 d-block mb-1 opacity-50"></i><p class="text-xs text-muted">Belum ada booking operasi.</p></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- ── SUB-PANEL 2: FORMULIR LAPORAN OPERASI SIMRS-NAMIRA RANAP ── --}}
+                        <div class="tab-pane fade" id="pills-ops-laporan-ranap" role="tabpanel">
+                            {{-- Alert Mode Edit Laporan Operasi Ranap --}}
+                            <div id="alertEditLaporanOpsRanap" class="alert alert-warning d-none d-flex justify-content-between align-items-center py-2 px-3 mb-3" style="border-radius:10px; border-left: 5px solid #d97706;">
+                                <div class="d-flex align-items-center gap-2">
+                                    <i class="bi bi-pencil-square fs-6 text-amber-800"></i>
+                                    <div>
+                                        <strong class="text-amber-900">Mode Edit Laporan Operasi:</strong> Mengubah laporan tanggal <span id="editLapOpsRanapTglText" class="font-bold text-dark"></span>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-xs btn-outline-dark font-bold py-1 px-2.5 rounded-pill" onclick="batalEditLaporanOpsRanap()">
+                                    <i class="bi bi-x-circle me-1"></i>Batal Edit (Input Baru)
+                                </button>
+                            </div>
+
+                            <div class="soap-form-card mb-3">
+                                <form id="formLaporanOperasiRanap">
+                                    <input type="hidden" name="no_rawat" id="lapOpsRanapNoRawat">
+                                    <input type="hidden" name="old_tanggal" id="lapOpsRanapOldTanggal" value="">
+
+                                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2 border-bottom pb-2">
+                                        <h6 class="mb-0" style="font-size:.92rem; font-weight:800; color:#0f172a;">
+                                            <i class="bi bi-file-earmark-medical-fill text-primary me-2"></i>
+                                            Formulir Laporan Operasi (Standar SIMRS-Namira)
+                                        </h6>
+                                        <button type="button" class="btn btn-outline-primary btn-sm font-bold text-xs rounded-pill px-3 py-1.5 shadow-xs" onclick="bukaModalTemplateLaporanRanap()">
+                                            <i class="bi bi-bookmarks-fill me-1 text-primary"></i> Pilih Template Laporan Operasi
+                                        </button>
+                                    </div>
+
+                                    <div class="row g-2.5 mb-3">
+                                        <div class="col-md-4">
+                                            <label class="form-label font-bold text-xs text-slate-600 mb-1">Tanggal Laporan Operasi</label>
+                                            <input type="datetime-local" name="tanggal" id="lapOpsRanapTanggal" class="form-control form-control-sm" value="{{ now()->format('Y-m-d\TH:i') }}">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label font-bold text-xs text-slate-600 mb-1">Tanggal &amp; Jam Mulai Operasi</label>
+                                            <input type="datetime-local" name="tgl_operasi" id="lapOpsRanapTglOperasi" class="form-control form-control-sm" value="{{ now()->format('Y-m-d\TH:i') }}">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label font-bold text-xs text-slate-600 mb-1">Tanggal &amp; Jam Selesai Operasi</label>
+                                            <input type="datetime-local" name="selesaioperasi" id="lapOpsRanapSelesaiOperasi" class="form-control form-control-sm" value="{{ now()->addHour()->format('Y-m-d\TH:i') }}">
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <label class="form-label font-bold text-xs text-slate-600 mb-1">Diagnosa Pra Bedah (Pre-Op) <span class="text-danger">*</span></label>
+                                            <input type="text" name="diagnosa_preop" id="lapOpsRanapPreop" class="form-control form-control-sm" placeholder="Contoh: G1 P0 A0 Hamil Aterm dg/ SC 1x...">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label font-bold text-xs text-slate-600 mb-1">Diagnosa Pasca Bedah (Post-Op) <span class="text-danger">*</span></label>
+                                            <input type="text" name="diagnosa_postop" id="lapOpsRanapPostop" class="form-control form-control-sm" placeholder="Contoh: Post Sectio Caesarea...">
+                                        </div>
+
+                                        <div class="col-md-5">
+                                            <label class="form-label font-bold text-xs text-slate-600 mb-1">Jaringan yang Dieksekusi / Dieksisi</label>
+                                            <input type="text" name="jaringan_dieksekusi" id="lapOpsRanapJaringan" class="form-control form-control-sm" placeholder="Contoh: Kulit, Dinding Abdomen, -">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label font-bold text-xs text-slate-600 mb-1">Permintaan PA</label>
+                                            <select name="permintaan_pa" id="lapOpsRanapPa" class="form-select form-select-sm">
+                                                <option value="Tidak">Tidak</option>
+                                                <option value="Ya">Ya</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label font-bold text-xs text-slate-600 mb-1">Jenis Pembiusan (Anasthesi)</label>
+                                            <input type="text" name="jenis_anasthesi" id="lapOpsRanapAnasthesi" class="form-control form-control-sm" placeholder="Spinal, GA, Lokal, Sedasi..." value="SPINAL">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label font-bold text-xs text-slate-600 mb-1">Kategori Operasi</label>
+                                            <select name="kategori" id="lapOpsRanapKategori" class="form-select form-select-sm">
+                                                <option value="-">-</option>
+                                                <option value="Khusus">Khusus</option>
+                                                <option value="Besar" selected>Besar</option>
+                                                <option value="Sedang">Sedang</option>
+                                                <option value="Kecil">Kecil</option>
+                                                <option value="Elektive">Elektive</option>
+                                                <option value="Emergency">Emergency</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="col-12">
+                                            <label class="form-label font-bold text-xs text-slate-600 mb-1">Uraian Laporan Operasi / Jalannya Tindakan Pembedahan <span class="text-danger">*</span></label>
+                                            <textarea name="laporan_operasi" id="lapOpsRanapLaporan" class="form-control form-control-sm" rows="8" placeholder="Tuliskan laporan operasi secara lengkap: desinfeksi, insisi, eksplorasi, hemostasis, penjahitan lapis demi lapis, jumlah perdarahan, urine, kondisi bayi/pasien..." style="font-family:monospace, inherit; line-height:1.6;"></textarea>
+                                        </div>
+                                    </div>
+
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <button type="button" class="btn btn-outline-secondary btn-sm font-bold px-3 py-2" onclick="resetFormLaporanOpsRanap()">
+                                            <i class="bi bi-arrow-counterclockwise me-1"></i> Reset Formulir
+                                        </button>
+                                        <button type="button" class="btn btn-success font-bold text-xs px-4 py-2" style="border-radius:8px;" id="btnSimpanLaporanOperasiRanap">
+                                            <i class="bi bi-save-fill me-1"></i> Simpan Laporan Operasi
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+
+                            <div class="soap-form-card">
+                                <h6 class="section-title mb-3"><i class="bi bi-file-earmark-text-fill text-danger"></i> Daftar Laporan Operasi Pasien Ini</h6>
+                                <div id="laporanOpsRanapContainer">
+                                    <div class="empty-state py-3"><i class="bi bi-file-earmark-medical fs-3 d-block mb-1 opacity-50"></i><p class="text-xs text-muted">Belum ada laporan operasi.</p></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- ── Tab 8: Riwayat Lengkap ── --}}
                 <div class="ranap-tab-panel" id="panel-riwayat">
                     <h6 class="section-title mb-3"><i class="bi bi-clock-history"></i> Riwayat Perawatan Lengkap</h6>
                     <div id="riwayat-container">
@@ -2290,6 +2499,154 @@
     </div>
 </div>
 
+{{-- MODAL CARI & PILIH PAKET OPERASI SIMRS-NAMIRA (RAWAT INAP) --}}
+<div class="modal fade" id="modalCariPaketRanap" tabindex="-1" aria-labelledby="modalCariPaketRanapLabel" aria-hidden="true" style="z-index: 1070;">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg" style="border-radius:16px; overflow:hidden;">
+            <div class="modal-header py-3 px-4" style="background:#0f172a; color:#fff;">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-search text-danger fs-5"></i>
+                    <h6 class="modal-title font-bold mb-0 text-white" id="modalCariPaketRanapLabel">::[ Cari &amp; Pilih Paket Tindakan Operasi SIMRS-Namira (Ranap) ]::</h6>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-3 bg-light">
+                <div class="card p-3 mb-3 border bg-white shadow-xs" style="border-radius:10px;">
+                    <div class="row g-2 align-items-center">
+                        <div class="col-md-5">
+                            <label class="form-label font-bold text-xs text-slate-600 mb-1">Cari Nama Operasi / Kode Paket</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-light"><i class="bi bi-search"></i></span>
+                                <input type="text" id="searchPaketOpsRanapInput" class="form-control" placeholder="Ketik nama operasi (misal: SC, Sirkumsisi, Hernia, Kuret)..." autocomplete="off">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label font-bold text-xs text-slate-600 mb-1">Kategori</label>
+                            <select id="filterKategoriOpsRanapSelect" class="form-select form-select-sm">
+                                <option value="">-- Semua Kategori --</option>
+                                <option value="Operasi">Operasi Bedah</option>
+                                <option value="Kebidanan">Kebidanan / Kandungan</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label font-bold text-xs text-slate-600 mb-1">Kelas Perawatan</label>
+                            <select id="filterKelasOpsRanapSelect" class="form-select form-select-sm">
+                                <option value="">-- Semua Kelas --</option>
+                                <option value="Kelas 1">Kelas 1</option>
+                                <option value="Kelas 2">Kelas 2</option>
+                                <option value="Kelas 3">Kelas 3</option>
+                                <option value="Kelas VIP">Kelas VIP</option>
+                                <option value="Kelas VVIP">Kelas VVIP</option>
+                                <option value="Rawat Jalan">Rawat Jalan</option>
+                            </select>
+                        </div>
+                        <div class="col-md-1 d-flex align-items-end">
+                            <button type="button" class="btn btn-outline-secondary btn-sm w-100 font-bold" onclick="loadPaketOperasiModalRanap('')">
+                                <i class="bi bi-arrow-clockwise"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-responsive bg-white rounded-3 border shadow-xs" style="max-height: 420px;">
+                    <table class="table table-hover table-sm align-middle mb-0 text-xs" id="tableModalPaketOpsRanap">
+                        <thead class="table-dark sticky-top" style="font-size:.78rem;">
+                            <tr>
+                                <th style="width:110px;">Kode</th>
+                                <th>Nama Tindakan / Paket Operasi</th>
+                                <th style="width:110px;">Kategori</th>
+                                <th style="width:110px;">Kelas</th>
+                                <th style="width:130px; text-align:right;">Tarif Operator</th>
+                                <th style="width:140px; text-align:right;">Total Tarif (Rp)</th>
+                                <th style="width:90px; text-align:center;">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbodyModalPaketOpsRanap">
+                            <tr><td colspan="7" class="text-center py-4 text-muted"><span class="spinner-border spinner-border-sm me-1"></span> Memuat paket operasi...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer py-2 px-4 bg-white border-top">
+                <button type="button" class="btn btn-secondary btn-sm px-3 font-bold text-xs rounded-2" data-bs-dismiss="modal">Tutup</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- MODAL PILIH TEMPLATE LAPORAN OPERASI SIMRS-NAMIRA (RAWAT INAP) --}}
+<div class="modal fade" id="modalTemplateLaporanRanap" tabindex="-1" aria-labelledby="modalTemplateLaporanRanapLabel" aria-hidden="true" style="z-index: 1070;">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg" style="border-radius:16px; overflow:hidden;">
+            <div class="modal-header py-3 px-4" style="background:#0f172a; color:#fff;">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-bookmarks-fill text-primary fs-5"></i>
+                    <h6 class="modal-title font-bold mb-0 text-white" id="modalTemplateLaporanRanapLabel">::[ Master Template Laporan Operasi SIMRS-Namira ]::</h6>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-3 bg-light">
+                <div class="row g-3">
+                    {{-- Sisi Kiri: Daftar Template --}}
+                    <div class="col-md-6">
+                        <div class="card p-2.5 mb-2.5 border bg-white shadow-xs" style="border-radius:10px;">
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-light"><i class="bi bi-search"></i></span>
+                                <input type="text" id="searchTemplateOpsRanapInput" class="form-control" placeholder="Cari nama template operasi / diagnosa..." autocomplete="off">
+                            </div>
+                        </div>
+
+                        <div class="table-responsive bg-white rounded-3 border shadow-xs" style="max-height: 420px;">
+                            <table class="table table-hover table-sm align-middle mb-0 text-xs" id="tableModalTemplateOpsRanap">
+                                <thead class="table-dark sticky-top" style="font-size:.78rem;">
+                                    <tr>
+                                        <th style="width:70px;">Kode</th>
+                                        <th>Nama Operasi</th>
+                                        <th>Pre-Op / Post-Op</th>
+                                        <th style="width:60px; text-align:center;">PA</th>
+                                        <th style="width:70px; text-align:center;">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbodyModalTemplateOpsRanap">
+                                    <tr><td colspan="5" class="text-center py-4 text-muted"><span class="spinner-border spinner-border-sm me-1"></span> Memuat template laporan operasi...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    {{-- Sisi Kanan: Preview Template Terpilih --}}
+                    <div class="col-md-6">
+                        <div class="card p-3 border bg-white shadow-xs h-100" style="border-radius:12px;">
+                            <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+                                <h6 class="font-bold text-xs text-slate-800 mb-0"><i class="bi bi-eye text-primary me-1"></i> Preview Template Operasi</h6>
+                                <span class="badge bg-primary px-2 py-1" id="previewTemplateRanapNoText">-</span>
+                            </div>
+                            <div class="mb-2 text-xs">
+                                <div><strong>Nama Operasi:</strong> <span id="previewTemplateRanapNamaText" class="text-slate-800 font-bold">-</span></div>
+                                <div><strong>Diagnosa Pre-Op:</strong> <span id="previewTemplateRanapPreopText" class="text-slate-700">-</span></div>
+                                <div><strong>Diagnosa Post-Op:</strong> <span id="previewTemplateRanapPostopText" class="text-slate-700">-</span></div>
+                                <div><strong>Jaringan Dieksisi:</strong> <span id="previewTemplateRanapJaringanText" class="text-slate-700">-</span> | <strong>PA:</strong> <span id="previewTemplateRanapPaText" class="badge bg-light text-dark border">-</span></div>
+                            </div>
+                            <div class="flex-grow-1">
+                                <label class="form-label font-bold text-xs text-slate-700 mb-1">Uraian Laporan Pembedahan:</label>
+                                <textarea id="previewTemplateRanapLaporanText" class="form-control form-control-sm bg-light" rows="12" readonly style="font-family:monospace, inherit; font-size:.78rem; line-height:1.5;"></textarea>
+                            </div>
+                            <div class="mt-3 text-end">
+                                <button type="button" class="btn btn-success btn-sm font-bold px-4 py-2" id="btnTerapkanTemplateOpsRanap" disabled style="border-radius:8px;">
+                                    <i class="bi bi-check-circle-fill me-1"></i> Terapkan Template Ini ke Formulir
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer py-2 px-4 bg-white border-top">
+                <button type="button" class="btn btn-secondary btn-sm px-3 font-bold text-xs rounded-2" data-bs-dismiss="modal">Tutup</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @endsection
 
 @push('scripts')
@@ -2299,6 +2656,7 @@
 //  ePasien RS Namira — Rawat Inap JavaScript
 // ================================================================
 const CSRF = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+const isDokterOrAdmin = {{ (session('auth_user.is_admin') || session('auth_user.is_dokter')) ? 'true' : 'false' }};
 
 // ── Global state ──────────────────────────────────────────────
 let currentNoRawat   = '';
@@ -2401,7 +2759,7 @@ function bukaDetailRanap(noRawatB64, nmPasien) {
     }
 
     // Fetch data
-    fetch(`/rawat-inap/pasien-detail/${noRawatB64}`, {
+    fetch("{{ route('rawat-inap.pasien-detail') }}?no_rawat=" + encodeURIComponent(noRawatB64), {
         headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' }
     })
     .then(r => r.json())
@@ -2451,6 +2809,8 @@ function resetAllPanels() {
     safeSet('rad-orders-container', '<div class="empty-state"><i class="bi bi-radioactive"></i><p>Memuat...</p></div>');
     safeSet('rad-results-container', '<div class="empty-state"><i class="bi bi-file-earmark-medical"></i><p>Memuat...</p></div>');
     safeSet('riwayat-container', '<div class="empty-state"><i class="bi bi-clock-history"></i><p>Memuat...</p></div>');
+    safeSet('riwayatOpsRanapContainer', '<div class="empty-state py-3"><i class="bi bi-calendar-event fs-3 d-block mb-1 opacity-50"></i><p class="text-xs text-muted">Memuat...</p></div>');
+    safeSet('laporanOpsRanapContainer', '<div class="empty-state py-3"><i class="bi bi-file-earmark-medical fs-3 d-block mb-1 opacity-50"></i><p class="text-xs text-muted">Memuat...</p></div>');
     safeSet('obat-cart', '');
 
     obatCart = [];
@@ -2461,8 +2821,12 @@ function resetAllPanels() {
     if (document.getElementById('formResumeRanap')) document.getElementById('formResumeRanap').reset();
     safeSet('resumeRanapStatusBadge', '<span class="text-xs text-muted"><i class="bi bi-info-circle me-1"></i>Belum disimpan</span>');
 
+    if (document.getElementById('formOperasiRanap')) document.getElementById('formOperasiRanap').reset();
+    if (document.getElementById('formLaporanOperasiRanap')) document.getElementById('formLaporanOperasiRanap').reset();
+    if (typeof batalEditLaporanOpsRanap === 'function') batalEditLaporanOpsRanap();
+
     // reset tab badges
-    ['soap','diagnosa','tindakan','resep','lab','rad','resume'].forEach(id => {
+    ['soap','diagnosa','tindakan','resep','lab','rad','operasi','resume'].forEach(id => {
         const b = document.getElementById(`badge-${id}`); if(b) b.textContent='0';
     });
 }
@@ -2583,7 +2947,13 @@ function renderOffcanvas(d) {
     renderLabPanel(d.labOrders ?? [], d.labResults ?? []);
     renderRadPanel(d.radOrders ?? [], d.radResults ?? []);
     renderRiwayatPanel(d.soapList ?? [], d.riwayatKamar ?? [], d.awalMedisRanap ?? null);
+    renderOperasiRanap(d.bookingOps ?? [], d.laporanOps ?? []);
     renderResumeRanap(d.resumeRanap, d);
+
+    $('#opsRanapNoRawat, #lapOpsRanapNoRawat').val(p.no_rawat);
+    loadMasterOperasiRanap();
+    loadMasterDokterRanap();
+    loadMasterRuangOkRanap();
 
     // Init Select2 for this offcanvas instance
     initSelect2();
@@ -3025,7 +3395,7 @@ function initSelect2() {
         }
     });
 
-    // Obat / BHP (disesuaikan tarif kelas kamar pasien)
+    // Obat / BHP (disesuaikan tarif kelas kamar pasien & depo ranap)
     $('#obat-select').select2({
         theme: 'bootstrap-5',
         dropdownParent: $('#offcanvasRanap'),
@@ -3043,12 +3413,44 @@ function initSelect2() {
             processResults: data => ({
                 results: (data || []).map(d => ({
                     id: d.kode_brng,
-                    text: `${d.nama_brng} (${d.kode_sat||'-'}) — Rp ${Number(d.harga||0).toLocaleString('id-ID')} [Stok: ${d.stok ?? '-'}]`,
+                    text: d.nama_brng,
+                    nama_brng: d.nama_brng,
                     kode_sat: d.kode_sat,
-                    harga: d.harga
+                    harga: d.harga,
+                    stok_depo: d.stok_depo !== undefined ? d.stok_depo : (d.stok ?? 0),
+                    stok_total: d.stok_total !== undefined ? d.stok_total : (d.stok ?? 0),
+                    kategori: d.kategori || '-'
                 }))
             }),
             cache: true
+        },
+        templateResult: function(item) {
+            if (item.loading) return item.text;
+            const stokDepo = parseFloat(item.stok_depo || 0);
+            const stokTotal = parseFloat(item.stok_total || 0);
+            const depoBadge = stokDepo > 0 
+                ? `<span class="badge bg-success-subtle text-success border border-success-subtle px-1.5 py-0.5">Depo Ranap: ${stokDepo}</span>`
+                : `<span class="badge bg-danger-subtle text-danger border border-danger-subtle px-1.5 py-0.5">Depo Ranap: Kosong</span>`;
+            const totalBadge = `<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-1.5 py-0.5">Total RS: ${stokTotal}</span>`;
+            const hargaFmt = Number(item.harga || 0).toLocaleString('id-ID');
+            return $(`
+                <div class="d-flex justify-content-between align-items-center py-1">
+                    <div>
+                        <div class="font-bold text-slate-800 text-xs">${item.nama_brng || item.text} <span class="text-slate-500 fw-normal">(${item.kode_sat || '-'})</span></div>
+                        <div class="text-slate-500 text-xs">Kode: <code>${item.id}</code> | Rp ${hargaFmt}</div>
+                    </div>
+                    <div class="text-end d-flex flex-column gap-1 align-items-end text-xs">
+                        ${depoBadge}
+                        ${totalBadge}
+                    </div>
+                </div>
+            `);
+        },
+        templateSelection: function(item) {
+            if (!item.id) return item.text;
+            const stokDepo = parseFloat(item.stok_depo || 0);
+            const stokFmt = stokDepo > 0 ? `[Depo: ${stokDepo}]` : `[Depo: Habis]`;
+            return `${item.nama_brng || item.text} (${item.kode_sat || '-'}) — Rp ${Number(item.harga||0).toLocaleString('id-ID')} ${stokFmt}`;
         }
     });
 
@@ -3302,7 +3704,7 @@ function tambahObatCart() {
 
     obatCart.push({
         kode_brng:    selectedOption.id,
-        nama_brng:    selectedOption.text,
+        nama_brng:    selectedOption.nama_brng || selectedOption.text,
         kode_sat:     selectedOption.kode_sat ?? '',
         jml:          1,
         aturan_pakai: '3 X 1 Sehari',
@@ -3412,10 +3814,21 @@ function renderRacikanCart() {
             bahanRows = r.detail.map((d, dIdx) => `
                 <tr>
                     <td><strong>${d.nama_brng}</strong><div class="text-muted text-xs">Kode: ${d.kode_brng}</div></td>
-                    <td class="text-center">${d.p1 || 1} / ${d.p2 || 1}</td>
-                    <td>${d.kandungan || '-'}</td>
+                    <td style="width:110px;">
+                        <div class="input-group input-group-sm">
+                            <input type="number" class="form-control form-control-sm text-center px-1" min="1" value="${d.p1 || 1}"
+                                onchange="updateBahanP1Ranap(${rIdx}, ${dIdx}, this.value)">
+                            <span class="input-group-text px-1">/</span>
+                            <input type="number" class="form-control form-control-sm text-center px-1" min="1" value="${d.p2 || 1}"
+                                onchange="updateBahanP2Ranap(${rIdx}, ${dIdx}, this.value)">
+                        </div>
+                    </td>
+                    <td style="width:110px;">
+                        <input type="text" class="form-control form-control-sm" value="${d.kandungan || ''}"
+                            onchange="racikanCart[${rIdx}].detail[${dIdx}].kandungan = this.value">
+                    </td>
                     <td style="width:100px; text-align:center;">
-                        <input type="number" class="form-control form-control-sm text-center" min="0.1" step="any" value="${d.jml}"
+                        <input type="number" class="form-control form-control-sm text-center fw-bold text-primary" min="0.1" step="any" value="${d.jml}" id="jml_ranap_${rIdx}_${dIdx}"
                             onchange="racikanCart[${rIdx}].detail[${dIdx}].jml = parseFloat(this.value)||1">
                     </td>
                     <td style="width:40px; text-align:center;">
@@ -3456,9 +3869,9 @@ function renderRacikanCart() {
                         <div class="col-md-2">
                             <label class="form-label font-bold text-xs text-slate-600 mb-0">P1 / P2</label>
                             <div class="input-group input-group-sm">
-                                <input type="number" class="form-control form-control-sm text-center" id="p1_ranap_${rIdx}" value="1" min="1">
+                                <input type="number" class="form-control form-control-sm text-center" id="p1_ranap_${rIdx}" value="1" min="1" oninput="hitungJmlBahanRanap(${rIdx})">
                                 <span class="input-group-text px-1">/</span>
-                                <input type="number" class="form-control form-control-sm text-center" id="p2_ranap_${rIdx}" value="1" min="1">
+                                <input type="number" class="form-control form-control-sm text-center" id="p2_ranap_${rIdx}" value="1" min="1" oninput="hitungJmlBahanRanap(${rIdx})">
                             </div>
                         </div>
                         <div class="col-md-2">
@@ -3467,7 +3880,7 @@ function renderRacikanCart() {
                         </div>
                         <div class="col-md-3">
                             <label class="form-label font-bold text-xs text-slate-600 mb-0">Jml Butuh Obat</label>
-                            <input type="number" class="form-control form-control-sm" id="jmlBahan_ranap_${rIdx}" value="${r.jml_dr}" min="0.1" step="any">
+                            <input type="number" class="form-control form-control-sm fw-bold text-primary" id="jmlBahan_ranap_${rIdx}" value="${r.jml_dr}" min="0.1" step="any">
                         </div>
                     </div>
                 </div>
@@ -3478,8 +3891,8 @@ function renderRacikanCart() {
                         <thead class="table-light">
                             <tr>
                                 <th>Nama Bahan Obat</th>
-                                <th style="width:90px; text-align:center;">P1 / P2</th>
-                                <th style="width:120px;">Kandungan</th>
+                                <th style="width:110px; text-align:center;">P1 / P2</th>
+                                <th style="width:110px;">Kandungan</th>
                                 <th style="width:100px; text-align:center;">Jml Butuh</th>
                                 <th style="width:40px; text-align:center;">Aksi</th>
                             </tr>
@@ -3491,6 +3904,37 @@ function renderRacikanCart() {
                 </div>
             </div>`;
     }).join('');
+}
+
+function hitungJmlBahanRanap(rIdx) {
+    const p1 = parseFloat(document.getElementById(`p1_ranap_${rIdx}`)?.value) || 1;
+    const p2 = parseFloat(document.getElementById(`p2_ranap_${rIdx}`)?.value) || 1;
+    const kemasan = parseFloat(racikanCart[rIdx]?.jml_dr) || 1;
+    const jml = Math.ceil((p1 / p2) * kemasan);
+    const jmlInput = document.getElementById(`jmlBahan_ranap_${rIdx}`);
+    if (jmlInput) jmlInput.value = jml;
+}
+
+function updateBahanP1Ranap(rIdx, dIdx, val) {
+    const p1 = parseFloat(val) || 1;
+    racikanCart[rIdx].detail[dIdx].p1 = p1;
+    const p2 = parseFloat(racikanCart[rIdx].detail[dIdx].p2) || 1;
+    const kemasan = parseFloat(racikanCart[rIdx]?.jml_dr) || 1;
+    const newJml = Math.ceil((p1 / p2) * kemasan);
+    racikanCart[rIdx].detail[dIdx].jml = newJml;
+    const el = document.getElementById(`jml_ranap_${rIdx}_${dIdx}`);
+    if (el) el.value = newJml;
+}
+
+function updateBahanP2Ranap(rIdx, dIdx, val) {
+    const p2 = parseFloat(val) || 1;
+    racikanCart[rIdx].detail[dIdx].p2 = p2;
+    const p1 = parseFloat(racikanCart[rIdx].detail[dIdx].p1) || 1;
+    const kemasan = parseFloat(racikanCart[rIdx]?.jml_dr) || 1;
+    const newJml = Math.ceil((p1 / p2) * kemasan);
+    racikanCart[rIdx].detail[dIdx].jml = newJml;
+    const el = document.getElementById(`jml_ranap_${rIdx}_${dIdx}`);
+    if (el) el.value = newJml;
 }
 
 // Search Bahan Racik Ranap
@@ -3512,16 +3956,28 @@ $(document).on('keyup', '.search-bahan-ranap-input', function () {
             if (data && data.length > 0) {
                 data.forEach(item => {
                     const satStr  = item.kode_sat ? ` (${item.kode_sat})` : '';
-                    const stokStr = item.stok !== undefined ? ` | Stok: ${item.stok}` : '';
+                    const stokDepo = parseFloat(item.stok_depo !== undefined ? item.stok_depo : (item.stok ?? 0));
+                    const stokTotal = parseFloat(item.stok_total !== undefined ? item.stok_total : stokDepo);
+                    const depoBadge = stokDepo > 0 
+                        ? `<span class="badge bg-success-subtle text-success border border-success-subtle px-1.5 py-0.5">Depo Ranap: ${stokDepo}</span>`
+                        : `<span class="badge bg-danger-subtle text-danger border border-danger-subtle px-1.5 py-0.5">Depo Ranap: Kosong</span>`;
+                    const totalBadge = `<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-1.5 py-0.5 ms-1">Total RS: ${stokTotal}</span>`;
+
                     html += `
-                        <div class="dropdown-item select-bahan-ranap-item py-1.5 px-2.5 border-bottom cursor-pointer"
+                        <div class="dropdown-item select-bahan-ranap-item py-1.5 px-2.5 border-bottom cursor-pointer d-flex justify-content-between align-items-center"
                              data-ridx="${rIdx}"
                              data-kode="${item.id || item.kode_brng}"
-                             data-nama="${item.text || item.nama_brng}"
+                             data-nama="${item.nama_brng || item.text}"
                              data-satuan="${item.kode_sat || ''}"
                              data-kapasitas="${item.kapasitas || 0}">
-                            <div class="font-bold text-slate-800 text-xs">${item.text || item.nama_brng}${satStr}</div>
-                            <div class="text-slate-500 text-xs">Kode: <code>${item.id || item.kode_brng}</code>${stokStr}</div>
+                            <div>
+                                <div class="font-bold text-slate-800 text-xs">${item.nama_brng || item.text}${satStr}</div>
+                                <div class="text-slate-500 text-xs">Kode: <code>${item.id || item.kode_brng}</code> | Rp ${Number(item.harga||0).toLocaleString('id-ID')}</div>
+                            </div>
+                            <div class="text-end">
+                                ${depoBadge}
+                                ${totalBadge}
+                            </div>
                         </div>`;
                 });
             } else {
@@ -3541,7 +3997,8 @@ $(document).on('click', '.select-bahan-ranap-item', function () {
     const p1 = parseFloat($(`#p1_ranap_${rIdx}`).val()) || 1;
     const p2 = parseFloat($(`#p2_ranap_${rIdx}`).val()) || 1;
     let kandungan = $(`#kandungan_ranap_${rIdx}`).val() || (kapasitas > 0 ? kapasitas : '');
-    let jml = parseFloat($(`#jmlBahan_ranap_${rIdx}`).val()) || racikanCart[rIdx].jml_dr || 10;
+    const kemasan = parseFloat(racikanCart[rIdx]?.jml_dr) || 1;
+    let jml = parseFloat($(`#jmlBahan_ranap_${rIdx}`).val()) || Math.ceil((p1 / p2) * kemasan);
 
     racikanCart[rIdx].detail.push({
         kode_brng: kode,
@@ -3564,8 +4021,6 @@ function hapusGrupRacikRanap(rIdx) {
 }
 
 function hapusBahanRacikRanap(rIdx, dIdx) {
-    racikanCart[rIdx].detail.splice(dIdx, 1);
-    renderRacikanCart();
 }
 
 // ── Simpan E-Resep Ranap (Obat Jadi & Racikan) ───────────────────
@@ -4342,7 +4797,7 @@ function kirimRadiologi() {
 
 // ── Refresh Detail Panel ──────────────────────────────────────
 function refreshDetailPanel(noRawatB64) {
-    fetch(`/rawat-inap/pasien-detail/${noRawatB64}`, {
+    fetch("{{ route('rawat-inap.pasien-detail') }}?no_rawat=" + encodeURIComponent(noRawatB64), {
         headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' }
     })
     .then(r => r.json())
@@ -4356,9 +4811,661 @@ function refreshDetailPanel(noRawatB64) {
         renderLabPanel(d.labOrders ?? [], d.labResults ?? []);
         renderRadPanel(d.radOrders ?? [], d.radResults ?? []);
         renderRiwayatPanel(d.soapList ?? [], d.riwayatKamar ?? []);
+        renderOperasiRanap(d.bookingOps ?? [], d.laporanOps ?? []);
     })
     .catch(() => {});
 }
+
+// ================================================================
+//  OPERASI / BEDAH RAWAT INAP (SIMRS-NAMIRA PARITY)
+// ================================================================
+
+function toDateTimeLocalValueRanap(dateStr) {
+    if (!dateStr) return '';
+    try {
+        const s = dateStr.replace(' ', 'T');
+        return s.substring(0, 16);
+    } catch (e) {
+        return '';
+    }
+}
+
+function loadMasterOperasiRanap() {
+    $.ajax({
+        url: '{{ route("rawat-inap.master-operasi") }}',
+        type: 'GET',
+        success: function (data) {
+            let html = '<option value="">-- Pilih Paket Operasi --</option>';
+            (data || []).forEach(item => {
+                const kelasStr = item.kelas ? ` [Kelas: ${item.kelas}]` : '';
+                const pjStr = item.png_jawab ? ` — ${item.png_jawab}` : '';
+                html += `<option value="${item.kode_paket}">${item.nm_perawatan}${kelasStr}${pjStr} (${item.kode_paket})</option>`;
+            });
+            $('#opsRanapKodePaket').html(html).trigger('change');
+        }
+    });
+}
+
+function loadMasterDokterRanap() {
+    $.ajax({
+        url: '{{ route("rawat-inap.master-dokter") }}',
+        type: 'GET',
+        success: function (data) {
+            let html = '<option value="">-- Pilih Dokter Operator --</option>';
+            (data || []).forEach(item => {
+                html += `<option value="${item.kd_dokter}">${item.nm_dokter}</option>`;
+            });
+            $('#opsRanapKdDokter').html(html).trigger('change');
+        }
+    });
+}
+
+function loadMasterRuangOkRanap() {
+    $.ajax({
+        url: '{{ route("rawat-inap.master-ruang-ok") }}',
+        type: 'GET',
+        success: function (data) {
+            let html = '';
+            (data || []).forEach(item => {
+                html += `<option value="${item.kd_ruang_ok}">${item.nm_ruang_ok} (${item.kd_ruang_ok})</option>`;
+            });
+            if (html) {
+                $('#opsRanapKdRuangOk').html(html);
+            }
+        }
+    });
+}
+
+function renderOperasiRanap(bookingList, laporanList) {
+    const bCount = (bookingList || []).length;
+    const lCount = (laporanList || []).length;
+
+    const bBadge = document.getElementById('badge-operasi');
+    if (bBadge) bBadge.textContent = bCount + lCount;
+
+    $('#countOpsRanapBookingText').text(bCount);
+    $('#countOpsRanapLaporanText').text(lCount);
+
+    // 1. Render Riwayat Booking Operasi
+    const bc = $('#riwayatOpsRanapContainer');
+    if (!bookingList || bookingList.length === 0) {
+        bc.html('<div class="empty-state py-3"><i class="bi bi-calendar-event fs-3 d-block mb-1 opacity-50"></i><p class="text-xs text-muted">Belum ada booking operasi untuk pasien ini.</p></div>');
+    } else {
+        let htmlBook = '';
+        bookingList.forEach(b => {
+            const sttsCls = b.status === 'Selesai' ? 'bg-success' : (b.status === 'Batal' ? 'bg-danger' : (b.status === 'Proses Operasi' ? 'bg-info text-white' : 'bg-warning text-dark'));
+            const kelasBadge = b.kelas ? `<span class="badge bg-primary bg-opacity-10 text-primary ms-1">Kelas ${escapeHtml(b.kelas)}</span>` : '';
+            const pjBadge = b.png_jawab ? `<span class="badge bg-info bg-opacity-10 text-info ms-1">${escapeHtml(b.png_jawab)}</span>` : '';
+            const ruangBadge = b.nm_ruang_ok ? `<span class="badge bg-purple-700 bg-opacity-10 text-purple-700 border border-purple-200 ms-1"><i class="bi bi-door-closed me-1"></i>${escapeHtml(b.nm_ruang_ok)}</span>` : '';
+
+            const printBtn = `<button type="button" class="btn btn-xs btn-outline-secondary font-bold px-2 py-1 rounded-2" onclick="cetakBookingOpsRanap('${escapeHtml(b.no_rawat)}', '${escapeHtml(b.kode_paket)}', '${escapeHtml(b.tanggal)}')"><i class="bi bi-printer me-1"></i>Cetak</button>`;
+
+            const delBtn = isDokterOrAdmin ? `
+                <button type="button" class="btn btn-xs btn-outline-danger font-bold px-2 py-1 rounded-2" onclick="hapusBookingOpsRanap('${escapeHtml(b.no_rawat)}', '${escapeHtml(b.kode_paket)}', '${escapeHtml(b.tanggal)}')">
+                    <i class="bi bi-trash me-1"></i>Hapus
+                </button>
+            ` : '';
+
+            htmlBook += `
+            <div class="card p-3 mb-2.5 border text-xs shadow-xs" style="border-radius:12px; background:#fff;">
+                <div class="d-flex justify-content-between align-items-center font-bold pb-2 mb-2 border-bottom flex-wrap gap-1">
+                    <div class="d-flex align-items-center flex-wrap gap-1">
+                        <span class="text-danger fs-7"><i class="bi bi-calendar-event me-1"></i>Tgl Operasi: ${fmtDate(b.tanggal)} (${(b.jam_mulai||'').substring(0,5)} - ${(b.jam_selesai||'').substring(0,5)})</span>
+                        ${ruangBadge}
+                    </div>
+                    <div class="d-flex align-items-center gap-1.5">
+                        <span class="badge ${sttsCls} px-2.5 py-1">${escapeHtml(b.status || 'Menunggu')}</span>
+                        <div class="btn-group btn-group-sm">
+                            ${printBtn}
+                            ${delBtn}
+                        </div>
+                    </div>
+                </div>
+                <div><strong>Paket Operasi:</strong> <span class="text-slate-900 font-bold">${escapeHtml(b.nama_paket || b.kode_paket)}</span> <code>(${escapeHtml(b.kode_paket)})</code> ${kelasBadge} ${pjBadge}</div>
+                <div class="text-slate-600 mt-1"><strong>Dokter Operator:</strong> ${escapeHtml(b.dokter_operator || b.kd_dokter)}</div>
+            </div>`;
+        });
+        bc.html(htmlBook);
+    }
+
+    // 2. Render Riwayat Laporan Operasi
+    const lc = $('#laporanOpsRanapContainer');
+    if (!laporanList || laporanList.length === 0) {
+        lc.html('<div class="empty-state py-3"><i class="bi bi-file-earmark-medical fs-3 d-block mb-1 opacity-50"></i><p class="text-xs text-muted">Belum ada laporan operasi untuk pasien ini.</p></div>');
+    } else {
+        let htmlLap = '';
+        laporanList.forEach(lo => {
+            const isCur = lo.is_current ? '<span class="badge bg-success ms-1">Rawat Inap Ini</span>' : `<span class="badge bg-light text-slate-600 border ms-1">${escapeHtml(lo.no_rawat)}</span>`;
+            const paBadge = lo.permintaan_pa === 'Ya' 
+                ? `<span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 px-2 py-0.5"><i class="bi bi-check-circle-fill me-1"></i>Dikirim PA</span>`
+                : `<span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25 px-2 py-0.5">Tanpa PA</span>`;
+            
+            const katBadge = lo.kategori && lo.kategori !== '-'
+                ? `<span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-2 py-0.5">Kategori: ${escapeHtml(lo.kategori)}</span>`
+                : '';
+
+            const printLapBtn = `<button type="button" class="btn btn-xs btn-outline-secondary font-bold px-2 py-1" onclick="cetakLaporanOpsRanap('${escapeHtml(lo.no_rawat)}', '${escapeHtml(lo.tanggal)}')"><i class="bi bi-printer me-1"></i>Cetak</button>`;
+
+            const actionBtns = `
+                <div class="btn-group btn-group-sm">
+                    ${printLapBtn}
+                    ${isDokterOrAdmin ? `
+                    <button type="button" class="btn btn-xs btn-outline-primary font-bold px-2 py-1" onclick="editLaporanOpsRanap('${escapeHtml(lo.no_rawat)}', '${escapeHtml(lo.tanggal)}', '${escapeHtml(lo.tgl_operasi||'')}', '${escapeHtml(lo.selesaioperasi||'')}', '${escapeHtml(lo.diagnosa_preop||'')}', '${escapeHtml(lo.diagnosa_postop||'')}', '${escapeHtml(lo.jaringan_dieksekusi||'')}', '${escapeHtml(lo.permintaan_pa||'Tidak')}', '${escapeHtml(lo.jenis_anasthesi||'')}', '${escapeHtml(lo.kategori||'-')}', ${JSON.stringify(lo.laporan_operasi||'').replace(/"/g, '&quot;')})">
+                        <i class="bi bi-pencil-square me-1"></i>Edit
+                    </button>
+                    <button type="button" class="btn btn-xs btn-outline-danger font-bold px-2 py-1" onclick="hapusLaporanOpsRanap('${escapeHtml(lo.no_rawat)}', '${escapeHtml(lo.tanggal)}')">
+                        <i class="bi bi-trash me-1"></i>Hapus
+                    </button>
+                    ` : ''}
+                </div>
+            `;
+
+            htmlLap += `
+            <div class="card p-3 mb-3 border text-xs shadow-xs" style="border-radius:12px; background:#fff;">
+                <div class="d-flex justify-content-between align-items-center font-bold pb-2 mb-2 border-bottom flex-wrap gap-1">
+                    <div class="d-flex align-items-center flex-wrap gap-1">
+                        <span class="text-danger fs-7"><i class="bi bi-file-earmark-medical-fill me-1"></i>Laporan Operasi: ${fmtDate(lo.tanggal)} ${(lo.tanggal||'').substring(11,16)} WIB</span>
+                        ${isCur}
+                    </div>
+                    <div class="d-flex align-items-center gap-1.5 flex-wrap">
+                        ${paBadge}
+                        ${katBadge}
+                        <span class="badge bg-danger px-2.5 py-1">Anestesi: ${escapeHtml(lo.jenis_anasthesi || '-')}</span>
+                        ${actionBtns}
+                    </div>
+                </div>
+                <div class="row g-2 mb-2 text-slate-700">
+                    <div class="col-md-6"><strong>Diagnosa Pre-Op:</strong> <span class="text-slate-900 fw-semibold">${escapeHtml(lo.diagnosa_preop || '-')}</span></div>
+                    <div class="col-md-6"><strong>Diagnosa Post-Op:</strong> <span class="text-slate-900 fw-semibold">${escapeHtml(lo.diagnosa_postop || '-')}</span></div>
+                    <div class="col-md-6"><strong>Jaringan Dieksisi:</strong> <span>${escapeHtml(lo.jaringan_dieksekusi || '-')}</span></div>
+                    <div class="col-md-6"><strong>Waktu Operasi:</strong> <span>Mulai: ${(lo.tgl_operasi||'').substring(11,16)} — Selesai: ${(lo.selesaioperasi||'').substring(11,16)}</span></div>
+                </div>
+                <div class="fw-bold text-slate-800 mt-2 mb-1"><i class="bi bi-body-text me-1"></i>Uraian Jalannya Operasi / Prosedur Bedah:</div>
+                <div class="text-slate-800 p-3 bg-light rounded-2 border" style="white-space:pre-wrap; font-family:monospace, inherit; font-size:.8rem; line-height:1.6;">${escapeHtml(lo.laporan_operasi || '-')}</div>
+            </div>`;
+        });
+        lc.html(htmlLap);
+    }
+}
+
+// ── SIMPAN BOOKING JADWAL OPERASI RANAP ──
+$('#btnSimpanOperasiRanap').on('click', function () {
+    if (!isDokterOrAdmin) {
+        showToast('Hanya Dokter dan Admin Utama yang berwenang menjadwalkan operasi.', 'warning');
+        return;
+    }
+
+    const noRawat = $('#opsRanapNoRawat').val();
+    if (!noRawat) {
+        showToast('Pilih pasien rawat inap terlebih dahulu.', 'warning');
+        return;
+    }
+
+    if (!$('#opsRanapKodePaket').val()) {
+        showToast('Pilih paket operasi terlebih dahulu.', 'warning');
+        return;
+    }
+
+    if (!$('#opsRanapKdDokter').val()) {
+        showToast('Pilih dokter operator terlebih dahulu.', 'warning');
+        return;
+    }
+
+    const btn = $(this);
+    btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span>Menyimpan...');
+
+    $.ajax({
+        url: '{{ route("rawat-inap.simpan-booking-operasi") }}',
+        type: 'POST',
+        data: $('#formOperasiRanap').serialize() + '&_token=' + CSRF,
+        success: function (res) {
+            showToast(res.message || 'Jadwal operasi berhasil disimpan.', 'success');
+            if (currentNoRawat) refreshDetailPanel(currentNoRawat);
+        },
+        error: function (err) {
+            showToast('Gagal menyimpan jadwal operasi: ' + (err.responseJSON ? err.responseJSON.message : 'Terjadi kesalahan'), 'error');
+        },
+        complete: function () {
+            btn.prop('disabled', false).html('<i class="bi bi-calendar-check-fill me-1"></i> Simpan Jadwal Operasi');
+        }
+    });
+});
+
+// ── HAPUS BOOKING OPERASI RANAP ──
+window.hapusBookingOpsRanap = function (noRawat, kodePaket, tanggal) {
+    if (!isDokterOrAdmin) {
+        showToast('Hanya Dokter dan Admin Utama yang berwenang menghapus booking operasi.', 'warning');
+        return;
+    }
+
+    Swal.fire({
+        title: 'Hapus Jadwal Operasi?',
+        html: `Apakah Anda yakin ingin membatalkan/menghapus booking operasi <b>${kodePaket}</b> pada tanggal <b>${tanggal}</b>?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: '<i class="bi bi-trash me-1"></i> Ya, Hapus',
+        cancelButtonText: 'Batal'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            $.ajax({
+                url: '{{ route("rawat-inap.hapus-booking-operasi") }}',
+                type: 'DELETE',
+                data: {
+                    no_rawat: noRawat,
+                    kode_paket: kodePaket,
+                    tanggal: tanggal,
+                    _token: CSRF
+                },
+                success: function (res) {
+                    showToast(res.message || 'Jadwal operasi berhasil dihapus.', 'success');
+                    if (currentNoRawat) refreshDetailPanel(currentNoRawat);
+                },
+                error: function (err) {
+                    showToast('Gagal menghapus jadwal operasi: ' + (err.responseJSON ? err.responseJSON.message : 'Terjadi kesalahan'), 'error');
+                }
+            });
+        }
+    });
+};
+
+// CETAK JADWAL BOOKING OPERASI RANAP (SIMRS-NAMIRA STANDAR)
+window.cetakBookingOpsRanap = function (noRawat, kodePaket, tanggal) {
+    if (!noRawat) return;
+    const baseUrl = "{{ route('rawat-inap.cetak-booking-operasi') }}";
+    const url = `${baseUrl}?no_rawat=${encodeURIComponent(noRawat)}&kode_paket=${encodeURIComponent(kodePaket||'')}&tanggal=${encodeURIComponent(tanggal||'')}`;
+    window.open(url, '_blank');
+};
+
+// CETAK LAPORAN OPERASI RANAP (SIMRS-NAMIRA STANDAR)
+window.cetakLaporanOpsRanap = function (noRawat, tanggal) {
+    if (!noRawat) return;
+    const baseUrl = "{{ route('rawat-inap.cetak-laporan-operasi') }}";
+    const url = `${baseUrl}?no_rawat=${encodeURIComponent(noRawat)}${tanggal ? '&tanggal=' + encodeURIComponent(tanggal) : ''}`;
+    window.open(url, '_blank');
+};
+
+// ── MODAL CARI & PILIH PAKET OPERASI RANAP ──
+let timerCariPaketOpsRanap = null;
+
+window.bukaModalCariPaketRanap = function () {
+    $('#modalCariPaketRanap').modal('show');
+    loadPaketOperasiModalRanap($('#searchPaketOpsRanapInput').val() || '');
+};
+
+window.loadPaketOperasiModalRanap = function (q) {
+    const query = (typeof q === 'string' ? q : $('#searchPaketOpsRanapInput').val()) || '';
+    const kategori = $('#filterKategoriOpsRanapSelect').val() || '';
+    const kelas = $('#filterKelasOpsRanapSelect').val() || '';
+
+    $('#tbodyModalPaketOpsRanap').html(`
+        <tr><td colspan="7" class="text-center py-4 text-muted"><span class="spinner-border spinner-border-sm me-1"></span> Memuat paket operasi...</td></tr>
+    `);
+
+    $.ajax({
+        url: '{{ route("rawat-inap.master-operasi") }}',
+        type: 'GET',
+        data: { q: query, kategori: kategori, kelas: kelas },
+        success: function (data) {
+            if (!data || data.length === 0) {
+                $('#tbodyModalPaketOpsRanap').html(`
+                    <tr><td colspan="7" class="text-center py-4 text-muted"><i class="bi bi-info-circle me-1"></i> Tidak ada paket operasi yang sesuai pencarian.</td></tr>
+                `);
+                return;
+            }
+
+            let html = '';
+            data.forEach(item => {
+                const tarifOp = parseFloat(item.operator1 || 0);
+                const totalTarif = parseFloat(item.total_tarif || item.biaya || 0);
+                const safeName = (item.nm_perawatan || '').replace(/'/g, "\\'");
+
+                html += `
+                <tr>
+                    <td class="font-bold text-slate-800"><code>${item.kode_paket}</code></td>
+                    <td>
+                        <div class="fw-bold text-slate-900">${item.nm_perawatan}</div>
+                        ${item.png_jawab ? `<small class="text-muted"><i class="bi bi-shield-check me-1"></i>${item.png_jawab}</small>` : ''}
+                    </td>
+                    <td><span class="badge bg-light text-dark border">${item.kategori || '-'}</span></td>
+                    <td><span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25">${item.kelas || 'Semua'}</span></td>
+                    <td class="text-end font-mono">Rp ${tarifOp.toLocaleString('id-ID')}</td>
+                    <td class="text-end font-mono font-bold text-success">Rp ${totalTarif.toLocaleString('id-ID')}</td>
+                    <td class="text-center">
+                        <button type="button" class="btn btn-xs btn-primary font-bold px-2.5 py-1 rounded-2" onclick="pilihPaketOperasiRanap('${item.kode_paket}', '${safeName}', ${totalTarif})">
+                            <i class="bi bi-check2-circle me-1"></i>Pilih
+                        </button>
+                    </td>
+                </tr>`;
+            });
+            $('#tbodyModalPaketOpsRanap').html(html);
+        },
+        error: function () {
+            $('#tbodyModalPaketOpsRanap').html(`
+                <tr><td colspan="7" class="text-center py-4 text-danger"><i class="bi bi-exclamation-triangle me-1"></i> Gagal memuat data paket operasi.</td></tr>
+            `);
+        }
+    });
+};
+
+$('#searchPaketOpsRanapInput').on('input', function () {
+    clearTimeout(timerCariPaketOpsRanap);
+    const val = $(this).val();
+    timerCariPaketOpsRanap = setTimeout(() => {
+        loadPaketOperasiModalRanap(val);
+    }, 300);
+});
+
+$('#filterKategoriOpsRanapSelect, #filterKelasOpsRanapSelect').on('change', function () {
+    loadPaketOperasiModalRanap($('#searchPaketOpsRanapInput').val());
+});
+
+window.pilihPaketOperasiRanap = function (kode, nama, tarif) {
+    let exists = false;
+    $('#opsRanapKodePaket option').each(function () {
+        if ($(this).val() === kode) {
+            exists = true;
+            return false;
+        }
+    });
+
+    if (!exists) {
+        $('#opsRanapKodePaket').append(new Option(`${nama} (${kode})`, kode, true, true));
+    } else {
+        $('#opsRanapKodePaket').val(kode);
+    }
+    $('#opsRanapKodePaket').trigger('change');
+
+    $('#modalCariPaketRanap').modal('hide');
+    showToast(`Paket operasi ${nama} berhasil dipilih.`, 'success');
+};
+
+// ── MODAL PILIH TEMPLATE LAPORAN OPERASI RANAP ──
+let timerTemplateOpsRanap = null;
+let selectedTemplateOpsRanapData = null;
+
+window.bukaModalTemplateLaporanRanap = function () {
+    $('#modalTemplateLaporanRanap').modal('show');
+    selectedTemplateOpsRanapData = null;
+    $('#btnTerapkanTemplateOpsRanap').prop('disabled', true);
+    $('#previewTemplateRanapNoText').text('-');
+    $('#previewTemplateRanapNamaText').text('-');
+    $('#previewTemplateRanapPreopText').text('-');
+    $('#previewTemplateRanapPostopText').text('-');
+    $('#previewTemplateRanapJaringanText').text('-');
+    $('#previewTemplateRanapPaText').text('-');
+    $('#previewTemplateRanapLaporanText').val('');
+
+    loadTemplateOperasiModalRanap($('#searchTemplateOpsRanapInput').val() || '');
+};
+
+window.loadTemplateOperasiModalRanap = function (q) {
+    const query = (typeof q === 'string' ? q : $('#searchTemplateOpsRanapInput').val()) || '';
+
+    $('#tbodyModalTemplateOpsRanap').html(`
+        <tr><td colspan="5" class="text-center py-4 text-muted"><span class="spinner-border spinner-border-sm me-1"></span> Memuat template laporan operasi...</td></tr>
+    `);
+
+    $.ajax({
+        url: '{{ route("rawat-inap.master-template-laporan-operasi") }}',
+        type: 'GET',
+        data: { q: query },
+        success: function (data) {
+            if (!data || data.length === 0) {
+                $('#tbodyModalTemplateOpsRanap').html(`
+                    <tr><td colspan="5" class="text-center py-4 text-muted"><i class="bi bi-info-circle me-1"></i> Tidak ada template yang cocok.</td></tr>
+                `);
+                return;
+            }
+
+            window.__cachedTemplatesOpsRanap = data;
+            let html = '';
+            data.forEach((t, idx) => {
+                const paBadge = t.permintaan_pa === 'Ya'
+                    ? `<span class="badge bg-danger">Ya</span>`
+                    : `<span class="badge bg-secondary">Tidak</span>`;
+
+                html += `
+                <tr style="cursor:pointer;" onclick="previewTemplateLaporanOpsRanapItem(${idx})">
+                    <td class="font-bold text-slate-800"><code>${t.no_template}</code></td>
+                    <td>
+                        <div class="fw-bold text-slate-900">${t.nama_operasi}</div>
+                    </td>
+                    <td>
+                        <div class="text-xs text-muted">Pre: ${t.diagnosa_preop || '-'}</div>
+                        <div class="text-xs text-muted">Post: ${t.diagnosa_postop || '-'}</div>
+                    </td>
+                    <td class="text-center">${paBadge}</td>
+                    <td class="text-center">
+                        <button type="button" class="btn btn-xs btn-outline-primary font-bold px-2 py-1 rounded-2" onclick="event.stopPropagation(); previewTemplateLaporanOpsRanapItem(${idx});">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </td>
+                </tr>`;
+            });
+            $('#tbodyModalTemplateOpsRanap').html(html);
+        },
+        error: function () {
+            $('#tbodyModalTemplateOpsRanap').html(`
+                <tr><td colspan="5" class="text-center py-4 text-danger"><i class="bi bi-exclamation-triangle me-1"></i> Gagal memuat template laporan operasi.</td></tr>
+            `);
+        }
+    });
+};
+
+$('#searchTemplateOpsRanapInput').on('input', function () {
+    clearTimeout(timerTemplateOpsRanap);
+    const val = $(this).val();
+    timerTemplateOpsRanap = setTimeout(() => {
+        loadTemplateOperasiModalRanap(val);
+    }, 300);
+});
+
+window.previewTemplateLaporanOpsRanapItem = function (idx) {
+    if (!window.__cachedTemplatesOpsRanap || !window.__cachedTemplatesOpsRanap[idx]) return;
+    const t = window.__cachedTemplatesOpsRanap[idx];
+    selectedTemplateOpsRanapData = t;
+
+    $('#previewTemplateRanapNoText').text(t.no_template);
+    $('#previewTemplateRanapNamaText').text(t.nama_operasi);
+    $('#previewTemplateRanapPreopText').text(t.diagnosa_preop || '-');
+    $('#previewTemplateRanapPostopText').text(t.diagnosa_postop || '-');
+    $('#previewTemplateRanapJaringanText').text(t.jaringan_dieksisi || '-');
+    $('#previewTemplateRanapPaText').text(t.permintaan_pa || 'Tidak');
+    $('#previewTemplateRanapLaporanText').val(t.laporan_operasi || '');
+
+    $('#btnTerapkanTemplateOpsRanap').prop('disabled', false);
+
+    $('#tbodyModalTemplateOpsRanap tr').removeClass('table-primary');
+    $(`#tbodyModalTemplateOpsRanap tr:eq(${idx})`).addClass('table-primary');
+};
+
+$('#btnTerapkanTemplateOpsRanap').on('click', function () {
+    if (!selectedTemplateOpsRanapData) {
+        showToast('Pilih salah satu template laporan operasi terlebih dahulu.', 'warning');
+        return;
+    }
+
+    const t = selectedTemplateOpsRanapData;
+    if (t.diagnosa_preop) $('#lapOpsRanapPreop').val(t.diagnosa_preop);
+    if (t.diagnosa_postop) $('#lapOpsRanapPostop').val(t.diagnosa_postop);
+    if (t.jaringan_dieksisi) $('#lapOpsRanapJaringan').val(t.jaringan_dieksisi);
+    if (t.permintaan_pa) $('#lapOpsRanapPa').val(t.permintaan_pa);
+    if (t.laporan_operasi) $('#lapOpsRanapLaporan').val(t.laporan_operasi);
+
+    $('#modalTemplateLaporanRanap').modal('hide');
+    showToast(`Template "${t.nama_operasi}" berhasil diterapkan ke formulir laporan operasi.`, 'success');
+});
+
+// ── SIMPAN / EDIT LAPORAN OPERASI RANAP ──
+$('#btnSimpanLaporanOperasiRanap').on('click', function () {
+    if (!isDokterOrAdmin) {
+        showToast('Hanya Dokter dan Admin Utama yang berwenang menyimpan Laporan Operasi.', 'warning');
+        return;
+    }
+
+    const noRawat = $('#lapOpsRanapNoRawat').val();
+    if (!noRawat) {
+        showToast('Pilih pasien rawat inap terlebih dahulu.', 'warning');
+        return;
+    }
+
+    const preop = $('#lapOpsRanapPreop').val().trim();
+    const postop = $('#lapOpsRanapPostop').val().trim();
+    const laporan = $('#lapOpsRanapLaporan').val().trim();
+
+    if (!preop) {
+        showToast('Diagnosa Pra Bedah (Pre-Op) wajib diisi.', 'warning');
+        $('#lapOpsRanapPreop').focus();
+        return;
+    }
+
+    if (!postop) {
+        showToast('Diagnosa Pasca Bedah (Post-Op) wajib diisi.', 'warning');
+        $('#lapOpsRanapPostop').focus();
+        return;
+    }
+
+    if (!laporan) {
+        showToast('Uraian laporan operasi / jalannya tindakan pembedahan wajib diisi.', 'warning');
+        $('#lapOpsRanapLaporan').focus();
+        return;
+    }
+
+    const btn = $(this);
+    btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span>Menyimpan...');
+
+    $.ajax({
+        url: '{{ route("rawat-inap.simpan-laporan-operasi") }}',
+        type: 'POST',
+        data: $('#formLaporanOperasiRanap').serialize() + '&_token=' + CSRF,
+        success: function (res) {
+            showToast(res.message || 'Laporan operasi berhasil disimpan.', 'success');
+            batalEditLaporanOpsRanap();
+            if (currentNoRawat) refreshDetailPanel(currentNoRawat);
+        },
+        error: function (err) {
+            showToast('Gagal menyimpan laporan operasi: ' + (err.responseJSON ? err.responseJSON.message : 'Terjadi kesalahan'), 'error');
+        },
+        complete: function () {
+            btn.prop('disabled', false).html('<i class="bi bi-save-fill me-1"></i> Simpan Laporan Operasi');
+        }
+    });
+});
+
+// ── EDIT LAPORAN OPERASI RANAP ──
+window.editLaporanOpsRanap = function (noRawat, tanggal, tglOperasi, selesaiOperasi, preop, postop, jaringan, pa, anesthesi, kategori, laporan) {
+    if (!isDokterOrAdmin) {
+        showToast('Hanya Dokter dan Admin Utama yang berwenang mengedit Laporan Operasi.', 'warning');
+        return;
+    }
+
+    $('#lapOpsRanapNoRawat').val(noRawat);
+    $('#lapOpsRanapOldTanggal').val(tanggal);
+
+    $('#lapOpsRanapTanggal').val(toDateTimeLocalValueRanap(tanggal));
+    if (tglOperasi) $('#lapOpsRanapTglOperasi').val(toDateTimeLocalValueRanap(tglOperasi));
+    if (selesaiOperasi) $('#lapOpsRanapSelesaiOperasi').val(toDateTimeLocalValueRanap(selesaiOperasi));
+
+    $('#lapOpsRanapPreop').val(preop || '');
+    $('#lapOpsRanapPostop').val(postop || '');
+    $('#lapOpsRanapJaringan').val(jaringan || '');
+    $('#lapOpsRanapPa').val(pa || 'Tidak');
+    $('#lapOpsRanapAnasthesi').val(anesthesi || 'SPINAL');
+    $('#lapOpsRanapKategori').val(kategori || 'Besar');
+    $('#lapOpsRanapLaporan').val(laporan || '');
+
+    $('#editLapOpsRanapTglText').text(tanggal);
+    $('#alertEditLaporanOpsRanap').removeClass('d-none');
+    $('#btnSimpanLaporanOperasiRanap').html('<i class="bi bi-pencil-square me-1"></i> Simpan Perubahan Laporan Operasi');
+
+    // Buka sub-tab 2 Laporan Operasi Ranap
+    const triggerEl = document.querySelector('#pills-ops-laporan-ranap-tab');
+    if (triggerEl) {
+        const tab = bootstrap.Tab.getOrCreateInstance(triggerEl);
+        tab.show();
+    }
+
+    // Switch ke tab operasi ranap jika belum
+    switchTab('operasi');
+    document.getElementById('formLaporanOperasiRanap')?.scrollIntoView({ behavior: 'smooth' });
+    showToast(`Laporan operasi tanggal ${tanggal} dimuat ke formulir.`, 'info');
+};
+
+window.batalEditLaporanOpsRanap = function () {
+    $('#lapOpsRanapOldTanggal').val('');
+    $('#alertEditLaporanOpsRanap').addClass('d-none');
+    $('#btnSimpanLaporanOperasiRanap').html('<i class="bi bi-save-fill me-1"></i> Simpan Laporan Operasi');
+    resetFormLaporanOpsRanap();
+};
+
+window.resetFormLaporanOpsRanap = function () {
+    const noRawat = $('#lapOpsRanapNoRawat').val();
+    if ($('#formLaporanOperasiRanap').length && $('#formLaporanOperasiRanap')[0]) {
+        $('#formLaporanOperasiRanap')[0].reset();
+    }
+    $('#lapOpsRanapNoRawat').val(noRawat);
+    $('#lapOpsRanapOldTanggal').val('');
+
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    const h = String(now.getHours()).padStart(2, '0');
+    const min = String(now.getMinutes()).padStart(2, '0');
+    const nowIso = `${y}-${m}-${d}T${h}:${min}`;
+
+    const endObj = new Date(now.getTime() + 60 * 60 * 1000);
+    const eh = String(endObj.getHours()).padStart(2, '0');
+    const emin = String(endObj.getMinutes()).padStart(2, '0');
+    const endIso = `${y}-${m}-${d}T${eh}:${emin}`;
+
+    $('#lapOpsRanapTanggal').val(nowIso);
+    $('#lapOpsRanapTglOperasi').val(nowIso);
+    $('#lapOpsRanapSelesaiOperasi').val(endIso);
+    $('#lapOpsRanapPa').val('Tidak');
+    $('#lapOpsRanapAnasthesi').val('SPINAL');
+    $('#lapOpsRanapKategori').val('Besar');
+};
+
+// ── HAPUS LAPORAN OPERASI RANAP ──
+window.hapusLaporanOpsRanap = function (noRawat, tanggal) {
+    if (!isDokterOrAdmin) {
+        showToast('Hanya Dokter dan Admin Utama yang berwenang menghapus Laporan Operasi.', 'warning');
+        return;
+    }
+
+    Swal.fire({
+        title: 'Hapus Laporan Operasi?',
+        html: `Apakah Anda yakin ingin menghapus Laporan Operasi tanggal <b>${tanggal}</b>? Tindakan ini tidak dapat dibatalkan.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: '<i class="bi bi-trash me-1"></i> Ya, Hapus',
+        cancelButtonText: 'Batal'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            $.ajax({
+                url: '{{ route("rawat-inap.hapus-laporan-operasi") }}',
+                type: 'DELETE',
+                data: {
+                    no_rawat: noRawat,
+                    tanggal: tanggal,
+                    _token: CSRF
+                },
+                success: function (res) {
+                    showToast(res.message || 'Laporan operasi berhasil dihapus.', 'success');
+                    if (currentNoRawat) refreshDetailPanel(currentNoRawat);
+                },
+                error: function (err) {
+                    showToast('Gagal menghapus laporan operasi: ' + (err.responseJSON ? err.responseJSON.message : 'Terjadi kesalahan'), 'error');
+                }
+            });
+        }
+    });
+};
 
 // ── Utility ───────────────────────────────────────────────────
 function fmtDate(val) {
